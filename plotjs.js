@@ -25,12 +25,21 @@ export const Plotjs = {
                     const{
                         sin, cos, tan, PI, pow, sqrt, abs, log
                     } = Math;
+                    
+                    const sec = (a) => 1/cos(a)
+                    const cot = (a) => 1/tan(a)
+                    const cosec = (a) => 1/sin(a)
+
                     return ${process}
+
+                    return Number.isFinite(result) ? result : null
+
                 `);
             
         }
         catch (error) {
             console.error(`2) plotjs error: formula "${formulaStr} is invalid"`)
         }
+
     }
 }
