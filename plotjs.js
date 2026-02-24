@@ -1,4 +1,4 @@
-export const Plotjs = {
+const Plotjs = {
 
     // Method 1: Trignometric graphs
 
@@ -23,7 +23,7 @@ export const Plotjs = {
 
         // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
 
-        const allowedPattern = /^(?:[x0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI)+$/;
+        const allowedPattern = /^(?:[x0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
 
         if (!allowedPattern.test(formulaStr)) {
             console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
@@ -106,7 +106,7 @@ export const Plotjs = {
 
         if (currentSegment.length>1) {
             currentSegment.forEach((p, i) => {
-                if (i===0) ctx.moveTo(point.x, point.y);
+                if (i===0) ctx.moveTo(p.x, p.y);
                 else ctx.lineTo(p.x, p.y)
             })
         }
@@ -148,3 +148,5 @@ export const Plotjs = {
     }
 
 }
+
+export default Plotjs;

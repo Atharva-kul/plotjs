@@ -1,0 +1,56 @@
+import Plotjs from './plotjs.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const graphContainer = document.getElementById('graph-container');
+
+    // Example 1: Sine wave
+    const sineCanvas = Plotjs.drawTrig({
+        formulaStr: 'sin(x)',
+        width: 600,
+        height: 300,
+        lineColor: '#61dafb',
+        bgColor: '#282c34',
+        scale: 50 // Adjust scale for better visualization if needed
+    });
+
+    if (sineCanvas) {
+        const h2 = document.createElement('h2');
+        h2.textContent = 'y = sin(x)';
+        graphContainer.appendChild(h2);
+        graphContainer.appendChild(sineCanvas);
+    }
+
+    // Example 2: Cosine wave
+    const cosineCanvas = Plotjs.drawTrig({
+        formulaStr: 'cos(x)',
+        width: 600,
+        height: 300,
+        lineColor: '#ff69b4',
+        bgColor: '#282c34',
+        scale: 50
+    });
+
+    if (cosineCanvas) {
+        const h2 = document.createElement('h2');
+        h2.textContent = 'y = cos(x)';
+        graphContainer.appendChild(h2);
+        graphContainer.appendChild(cosineCanvas);
+    }
+
+    // Example 3: A more complex function (e.g., x^2)
+    const complexCanvas = Plotjs.drawTrig({
+        formulaStr: 'x^2',
+        width: 600,
+        height: 300,
+        lineColor: '#a9a9a9',
+        bgColor: '#282c34',
+        scale: 50
+    });
+
+    if (complexCanvas) {
+        const h2 = document.createElement('h2');
+        h2.textContent = 'y = x^2';
+        graphContainer.appendChild(h2);
+        graphContainer.appendChild(complexCanvas);
+    }
+});
