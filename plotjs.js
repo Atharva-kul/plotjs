@@ -13,7 +13,9 @@ const Plotjs = {
             height = 250,
             lineColor = 'white',
             lineWidth = 2,
-            bgColor = 'black'
+            bgColor = 'black',
+            xRange,
+            yRange
         } = config;
 
         if(!formulaStr) {
@@ -69,7 +71,9 @@ const Plotjs = {
             formula,
             width,
             height,
-            scale: config.scale || 50
+            scale: config.scale || 50,
+            xRange,
+            yRange
         })
 
         Plotjs._drawGraph(points, ctx, { lineColor, 
@@ -123,7 +127,9 @@ const Plotjs = {
             formula,
             width,
             height,
-            scale = 50
+            scale = 50,
+            xRange,
+            yRange
         } = config;
         const points = []
         const midX = width/2
@@ -133,20 +139,37 @@ const Plotjs = {
         // handle cases where the formula returns non-finite values (like infinity or NaN) by inserting nulls to indicate discontinuities in the graph
 
         for (let px = 0; px <= width; px++) {
-            const x = (px - midX) / scale
-            const y = formula(x)
+            
+            let x
+            if(xRange) {
+                const [minX, maxX] = xRange
+                x = minX + (px / width) * (maxX - minX)
 
-            if (y !== null && Number.isFinite(y)) {
-                const py = midY - (y * scale);
-                points.push({x: px, y: py});
             } else {
-                
-                points.push(null);
+                x = (px - midX) / scale
+            }
+
+            let y = formula(x)
+            if (y !== null && Number.isFinite(y)) {
+                let py
+                if(yRange) {
+                    const [minY, maxY] = yRange;
+                    py = height - ((y - minY) / (maxY - minY)) * height;
+
+                } else {
+                    py = midY - (y * scale)
+                }
+                points.push({
+                    x: px,
+                    y: py
+                })
+            } else {
+                points.push(null)
             }
         }
-        return points
+        return points;
     }
 
 }
 
-export default Plotjs;
+export default Plotjs

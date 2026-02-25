@@ -5,17 +5,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Example 1: Sine wave
     const sineCanvas = Plotjs.drawTrig({
-        formulaStr: 'sin(x)',
-        width: 600,
+        formulaStr: 'sin(x^2) - log(x)',
+        width: 900,
         height: 300,
         lineColor: '#61dafb',
         bgColor: '#282c34',
-        scale: 50 // Adjust scale for better visualization if needed
+        scale: 10, // Adjust scale for better visualization if needed
+        xRange: [-1, 50], // Optional: specify x range for better control
+        yRange: [-5, 5] // Optional: specify y range for better control
     });
 
     if (sineCanvas) {
         const h2 = document.createElement('h2');
-        h2.textContent = 'y = sin(x)';
+        h2.textContent = 'y = sin(x^2) - log(x)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(sineCanvas);
     }
