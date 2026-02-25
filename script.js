@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 900,
         height: 300,
         lineColor: '#61dafb',
-        bgColor: '#282c34',
-        scale: 10, // Adjust scale for better visualization if needed
-        xRange: [-1, 50], // Optional: specify x range for better control
-        yRange: [-5, 5] // Optional: specify y range for better control
+        bgColor: '#105a44',
+        scale: 50, // Adjust scale for better visualization if needed
+        //xRange: [-1, 25], // Optional: specify x range for better control
+        //yRange: [-5, 5] // Optional: specify y range for better control
     });
 
     if (sineCanvas) {
@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = sin(x^2) - log(x)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(sineCanvas);
+        Plotjs.drawAxis(sineCanvas.getContext('2d'), 900, 300);
     }
 
     // Example 2: Cosine wave
@@ -37,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = cos(x)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(cosineCanvas);
+        Plotjs.drawAxis(cosineCanvas.getContext('2d'), 600, 300);
+        Plotjs.addText(cosineCanvas.getContext('2d'), 'cosine curve ', 10, 20, '#ff69b4', '16px Arial');
     }
 
     // Example 3: A more complex function (e.g., x^2)
@@ -54,5 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = x^2';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(complexCanvas);
+        Plotjs.drawAxis(complexCanvas.getContext('2d'), 600, 300);
+        Plotjs.drawGrid(complexCanvas.getContext('2d'), 600, 300, 50);
     }
 });
