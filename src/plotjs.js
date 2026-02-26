@@ -25,7 +25,7 @@ const Plotjs = {
 
         // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
 
-        const allowedPattern = /^(?:[x0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
+        const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
 
         if (!allowedPattern.test(formulaStr)) {
             console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
@@ -38,7 +38,7 @@ const Plotjs = {
         try {
             const process = formulaStr.replace(/\^/g, '**')
 
-            formula = new Function('x', `
+            formula = new Function('x', 't', `
                     const{
                         sin, cos, tan, PI, pow, sqrt, abs, log
                     } = Math;
@@ -68,7 +68,7 @@ const Plotjs = {
         const ctx = canvas.getContext('2d');
 
         const points = Plotjs._generatePoints({
-            formula,
+            formula: (x) => formula(x, config.t || 0),
             width,
             height,
             scale: config.scale || 50,
@@ -250,7 +250,7 @@ const Plotjs = {
 
         // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
 
-        const allowedPattern = /^(?:[t0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
+        const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
 
         if (!allowedPattern.test(formulaStr)) {
             console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
@@ -312,6 +312,197 @@ const Plotjs = {
         Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
         return canvas;
 
+    },
+
+    drawParametric: (config) => {
+        const {
+            formulaXStr,
+            formulaYStr,
+            width = 500,
+            height = 500,
+            lineColor = 'white',
+            lineWidth = 2,
+            bgColor = 'black',
+            scale = 50,
+            tRange = [0, 2 * Math.PI],
+            steps = 1000
+        } = config;
+
+        if(!formulaXStr || !formulaYStr) {
+            console.error("1) plotjs Error: parameter formulaXStr and formulaYStr must be passed to draw the graph")
+            return null;
+        }
+
+        // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
+
+        const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
+
+        if (!allowedPattern.test(formulaXStr)) {
+            console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaXStr}" contains unauthorized functions, variables, or characters.`);
+            return null; 
+        }
+
+        if (!allowedPattern.test(formulaYStr)) {
+            console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaYStr}" contains unauthorized functions, variables, or characters.`);
+            return null; 
+        }
+
+        let formulaX, formulaY;
+
+        const createFormula = (str) => {
+            try {
+                const process = str.replace(/\^/g, '**');
+                return new Function('t', `
+                    const { sin, cos, tan, PI, pow, sqrt, abs, log } = Math;
+                    const sec = (a) => 1/cos(a);
+                    const cosec = (a) => 1/sin(a);
+                    const cot = (a) => 1/tan(a);
+                    const result = ${process};
+                    return Number.isFinite(result) ? result : null;`);
+            } catch (e) {
+                console.error(`Plotjs Error: Formula "${str}" is invalid.`);
+                return null;
+            }
+        };
+
+        const fX = createFormula(formulaXStr);
+        const fY = createFormula(formulaYStr);
+
+        if(!fX || !fY) {
+            console.error("4) Plotjs Error: Both formulaXStr and formulaYStr must be valid formulas.");
+            return null;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.backgroundColor = bgColor
+        const ctx = canvas.getContext('2d');
+
+        const points = []
+        const midX = width / 2
+        const midY = height / 2
+        const[tMin, tMax] = tRange
+
+        for(let i = 0; i <= steps; i++) {
+            const t = tMin + (i/steps) * (tMax - tMin)
+            const xVal = fX(t);
+            const yVal = fY(t);
+
+            if(xVal !== null && yVal !== null) {
+                points.push({
+                    x: midX + (xVal * scale),
+                    y: midY - (yVal * scale) // inverted y-axis for canvas
+                })
+            } else {
+                points.push(null)
+            }
+        }
+
+        Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+        return canvas;
+    },
+
+    // Method 9: loop animate the graph for a given formula
+
+    loopAnimate: (config) => {
+        const {
+            formulaStr,
+            canvas: existingCanvas,
+            width = 500,
+            height = 250,
+            lineColor = 'white',
+            lineWidth = 2,
+            bgColor = 'black',
+            scale = 50,
+            xRange,
+            yRange,
+            duration = Infinity,
+            speed = 1,
+            showAxis = true,
+            showGrid = true
+        } = config;
+
+        if (!formulaStr) {
+            console.error("Plotjs Error: parameter formulaStr must be passed to animate the graph");
+            return null;
+        }
+
+        // Security check: allow 'x', 't', and math functions
+        const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
+
+        if (!allowedPattern.test(formulaStr)) {
+            console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
+            return null;
+        }
+
+        let formula;
+        try {
+            const process = formulaStr.replace(/\^/g, '**');
+            formula = new Function('x', 't', `
+                const { sin, cos, tan, PI, pow, sqrt, abs, log } = Math;
+                const sec = (a) => 1/cos(a);
+                const cot = (a) => 1/tan(a);
+                const cosec = (a) => 1/sin(a);
+                const result = ${process};
+                return Number.isFinite(result) ? result : null;
+            `);
+        } catch (error) {
+            console.error(`Plotjs Error: formula "${formulaStr}" is invalid`);
+            return null;
+        }
+
+        const canvas = existingCanvas || document.createElement('canvas');
+        if (!existingCanvas) {
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.backgroundColor = bgColor;
+        }
+        const ctx = canvas.getContext('2d');
+
+        let startTime = null;
+        let animationId = null;
+
+        const renderFrame = (timeStamp) => {
+            if (!startTime) startTime = timeStamp;
+            const elapsed = timeStamp - startTime;
+
+            if (elapsed > duration) {
+                cancelAnimationFrame(animationId);
+                return;
+            }
+
+            const t = (elapsed / 1000) * speed;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (showGrid) Plotjs.drawGrid(ctx, canvas.width, canvas.height, 50);
+            if (showAxis) Plotjs.drawAxis(ctx, canvas.width, canvas.height);
+
+            const points = Plotjs._generatePoints({
+                formula: (x) => formula(x, t),
+                width: canvas.width,
+                height: canvas.height,
+                scale,
+                xRange,
+                yRange
+            });
+
+            Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+            animationId = requestAnimationFrame(renderFrame);
+        };
+
+        animationId = requestAnimationFrame(renderFrame);
+
+        return {
+            canvas,
+            stop: () => cancelAnimationFrame(animationId),
+            play: () => {
+                cancelAnimationFrame(animationId);
+                startTime = null;
+                animationId = requestAnimationFrame(renderFrame);
+            }
+        };
     }
 
 }

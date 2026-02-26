@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Example 2: Cosine wave
     const cosineCanvas = Plotjs.drawTrig({
-        formulaStr: 'cos(x)',
+        formulaStr: 'cos(x + t)',
         width: 600,
         height: 300,
         lineColor: '#ff69b4',
@@ -35,11 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (cosineCanvas) {
         const h2 = document.createElement('h2');
-        h2.textContent = 'y = cos(x)';
+        h2.textContent = 'y = cos(x + t)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(cosineCanvas);
-        Plotjs.drawAxis(cosineCanvas.getContext('2d'), 600, 300);
-        Plotjs.addText(cosineCanvas.getContext('2d'), 'cosine curve ', 10, 20, '16px Arial', '#ff69b4');
+        Plotjs.loopAnimate({
+            formulaStr: 'cos(x + t)',
+            canvas: cosineCanvas,
+            lineColor: '#ff69b4',
+            scale: 50,
+            speed: 2
+        });
     }
 
     // Example 3: A more complex function (e.g., x^2)
@@ -82,4 +87,29 @@ document.addEventListener('DOMContentLoaded', () => {
         Plotjs.drawGrid(polar. getContext('2d'), 600, 600, 50);
     
     }
+
+    const parametric = Plotjs.drawParametric({
+        formulaXStr: '3 * cos(t) + 2 * cos(3 * t)',
+        formulaYStr: '3 * sin(t) - 2 * sin(3 * t)',
+        width: 600,
+        height: 600,
+        lineColor: '#47ff56',
+        bgColor: '#282c34',
+        scale: 50
+    })
+
+    if(parametric) {
+        const h2 = document.createElement('h2')
+        h2.textContent = 'parametric Curve: x = 3cos(t) + 2cos(3t), y = 3sin(t) - 2sin(3t)'
+        graphContainer.appendChild(h2)
+        graphContainer.appendChild(parametric)
+
+        Plotjs.addText(parametric.getContext('2d'), 'parametric curve', 10, 20, '16px Arial', '#47ff56');
+        Plotjs.drawAxis(parametric.getContext('2d'), 600, 600);
+        Plotjs.drawGrid(parametric.getContext('2d'), 600, 600, 50);
+        //Plotjs.loopAnimate(parametric, lineColor='#47ff56', bgColor='#282c34', scale=50, formulaXStr='3 * cos(t) + 2 * cos(3 * t)', formulaYStr='3 * sin(t) - 2 * sin(3 * t)', tStart=0, tEnd=20 * Math.PI, tStep=0.1, delay=30);
+    }
+
+    
+
 });
