@@ -1,228 +1,128 @@
 # Plotjs - A Simple JavaScript Graphing Library
 
-Plotjs is a lightweight JavaScript library for drawing trigonometric and other mathematical function graphs directly on an HTML canvas. It's designed for simplicity and ease of integration into web projects.
+Plotjs is a lightweight JavaScript library for drawing trigonometric, polar, and other mathematical function graphs directly on an HTML canvas. It's designed for simplicity and ease of integration into web projects.
 
 ## Features
 
-*   Draws trigonometric functions (e.g., sin(x), cos(x)).
-*   Supports custom mathematical formulas (e.g., x^2).
-*   Configurable graph properties: width, height, line color, background color, scale.
-*   Handles discontinuities in functions.
+*   **Trigonometric & Cartesian Functions**: Draw functions like `sin(x)`, `cos(x)`, `x^2`, etc.
+*   **Polar Curves**: Support for polar coordinate equations (e.g., `r = 2 + sin(5t)`).
+*   **Coordinate Helpers**: Built-in methods to draw axes, grids, and labels.
+*   **Highly Configurable**: Control width, height, colors, scale, and ranges.
+*   **Security Minded**: Includes a formula sanitizer to prevent unauthorized code execution.
+*   **Lightweight & Module-based**: Easy to import and use in modern web applications.
+
+## Project Structure
+
+The project is organized to separate the core library from demonstration and server code:
+
+```
+mainLib/
+├── src/
+│   └── plotjs.js          # Core Library
+├── demo/
+│   ├── index.html         # Demo Page
+│   ├── script.js          # Demo Implementation
+│   └── style.css          # Demo Styling
+├── server/
+│   └── express-server.js  # Local Development Server
+├── package.json           # Project Configuration
+└── README.md
+```
 
 ## Setup and Installation
 
-To use Plotjs, you need the following files in your project directory:
-
-*   `plotjs.js`: The core Plotjs library.
-*   `index.html`: Your main HTML file where you'll display the graphs.
-*   `script.js`: Your JavaScript file to initialize and draw graphs using Plotjs.
-*   `style.css`: (Optional) For basic styling of your webpage.
-*   `express-server.js`: (Optional) A Node.js server for local development.
-*   `package.json`: (Optional) For Node.js project management.
-
-Ensure your directory structure looks like this:
-
-```
-your-project/
-├── index.html
-├── plotjs.js
-├── script.js
-├── style.css
-├── express-server.js
-└── package.json
-```
+1.  Clone the repository or download the files.
+2.  Install dependencies for the demo server:
+    ```bash
+    npm install
+    ```
 
 ## Usage
 
-### 1. Include Files in `index.html`
+### 1. Import the Library
 
-Your `index.html` file should link to your `style.css` and include `script.js` as a module. `plotjs.js` will be imported by `script.js`.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plotjs Graph Example</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <h1>Plotjs Graph Example</h1>
-    <div id="graph-container">
-        <!-- Graphs will be inserted here by JavaScript -->
-    </div>
-    <script type="module" src="script.js"></script>
-</body>
-</html>
-```
-
-### 2. Draw Graphs with `script.js`
-
-In your `script.js` file, import the `Plotjs` library and use its `drawTrig` method to create canvas elements with your desired graphs. Append these canvases to an HTML container.
+In your JavaScript module, import `Plotjs` from the `src` directory:
 
 ```javascript
-import Plotjs from './plotjs.js';
+import Plotjs from '../src/plotjs.js';
+```
 
-document.addEventListener('DOMContentLoaded', () => {
-    const graphContainer = document.getElementById('graph-container');
+### 2. Draw a Cartesian Graph
 
-    // Example 1: Sine wave
-    const sineCanvas = Plotjs.drawTrig({
-        formulaStr: 'sin(x)',
-        width: 600,
-        height: 300,
-        lineColor: '#61dafb',
-        bgColor: '#282c34',
-        scale: 50
-    });
+Use `drawTrig` for functions based on `x`.
 
-    if (sineCanvas) {
-        const h2 = document.createElement('h2');
-        h2.textContent = 'y = sin(x)';
-        graphContainer.appendChild(h2);
-        graphContainer.appendChild(sineCanvas);
-    }
-
-    // Example 2: Cosine wave
-    const cosineCanvas = Plotjs.drawTrig({
-        formulaStr: 'cos(x)',
-        width: 600,
-        height: 300,
-        lineColor: '#ff69b4',
-        bgColor: '#282c34',
-        scale: 50
-    });
-
-    if (cosineCanvas) {
-        const h2 = document.createElement('h2');
-        h2.textContent = 'y = cos(x)';
-        graphContainer.appendChild(h2);
-        graphContainer.appendChild(cosineCanvas);
-    }
-
-    // Example 3: A more complex function (e.g., x^2)
-    const complexCanvas = Plotjs.drawTrig({
-        formulaStr: 'x^2',
-        width: 600,
-        height: 300,
-        lineColor: '#a9a9a9',
-        bgColor: '#282c34',
-        scale: 50
-    });
-
-    if (complexCanvas) {
-        const h2 = document.createElement('h2');
-        h2.textContent = 'y = x^2';
-        graphContainer.appendChild(h2);
-        graphContainer.appendChild(complexCanvas);
-    }
+```javascript
+const canvas = Plotjs.drawTrig({
+    formulaStr: 'sin(x^2)',
+    width: 600,
+    height: 300,
+    lineColor: '#61dafb',
+    bgColor: '#282c34',
+    scale: 50,
+    xRange: [-5, 5] // Optional
 });
+
+document.body.appendChild(canvas);
 ```
 
-### 3. Basic Styling (`style.css`)
+### 3. Draw a Polar Graph
 
-```css
-body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    background-color: #282c34;
-    color: white;
-}
+Use `drawPolar` for functions based on `t` (theta).
 
-h1 {
-    margin-bottom: 20px;
-}
+```javascript
+const polarCanvas = Plotjs.drawPolar({
+    formulaStr: '2 + sin(5 * t)',
+    width: 500,
+    height: 500,
+    lineColor: '#ff6347',
+    bgColor: '#101217',
+    scale: 50,
+    tRange: [0, 2 * Math.PI] // Optional
+});
 
-#graph-container {
-    border: 1px solid #61dafb;
-    box-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
-    margin-bottom: 20px;
-}
-
-canvas {
-    display: block;
-}
+document.body.appendChild(polarCanvas);
 ```
 
-## Running Locally with a Web Server (Recommended)
+### 4. Use Helper Methods
 
-Due to browser security restrictions (CORS) with JavaScript modules, it's highly recommended to serve your `index.html` file using a local HTTP server during development.
+Enhance your graphs with axes, grids, and text:
 
-### Option 1: Python's Simple HTTP Server
+```javascript
+const ctx = canvas.getContext('2d');
+Plotjs.drawAxis(ctx, canvas.width, canvas.height);
+Plotjs.drawGrid(ctx, canvas.width, canvas.height, 50);
+Plotjs.addText(ctx, 'y = sin(x^2)', 10, 20, '16px Arial', '#ffffff');
+```
 
-This is a quick and easy way if you have Python installed.
+## API Reference
 
-1.  Open your terminal or command prompt in your project's root directory (`your-project/`).
-2.  Run the following command:
+### `Plotjs.drawTrig(config)`
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `formulaStr` | `string` | The mathematical formula using `x` (e.g., `sin(x)`). |
+| `width`/`height` | `number` | Canvas dimensions (Default: 500x250). |
+| `lineColor` | `string` | Color of the graph line. |
+| `bgColor` | `string` | Background color of the canvas. |
+| `scale` | `number` | Zoom level/pixels per unit. |
+| `xRange`/`yRange` | `[min, max]` | Optional specific ranges to display. |
+
+### `Plotjs.drawPolar(config)`
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `formulaStr` | `string` | The mathematical formula using `t` (e.g., `2 * t`). |
+| `tRange` | `[min, max]` | Range of theta (Default: `[0, 2*PI]`). |
+| `steps` | `number` | Number of points to calculate (Default: 1000). |
+
+## Running the Demo Locally
+
+A pre-configured Express server is included to serve the library and demo files correctly.
+
+1.  **Start the server**:
     ```bash
-    python -m http.server 8000
+    npm start
     ```
-3.  Open your web browser and navigate to:
-    ```
-    http://localhost:8000/index.html
-    ```
-    You should see your graphs displayed.
+2.  **Open your browser**:
+    Navigate to `http://localhost:8000`
 
-To stop the server, go back to your terminal and press `Ctrl+C`.
-
-### Option 2: JavaScript Server with Node.js and Express
-
-This option is great if you're already working within a Node.js ecosystem.
-
-1.  **Ensure Node.js is installed** on your system.
-2.  **Initialize npm** in your project directory (if you haven't already):
-    ```bash
-    npm init -y
-    ```
-3.  **Install Express.js**:
-    ```bash
-    npm install express
-    ```
-4.  **Create `express-server.js`**:
-    Create a file named `express-server.js` in your project root with the following content:
-    ```javascript
-    const express = require('express');
-    const path = require('path');
-    const app = express();
-    const port = 8000; // Or any port you prefer
-
-    // Serve static files from the current directory
-    app.use(express.static(__dirname));
-
-    app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'index.html'));
-    });
-
-    app.listen(port, () => {
-      console.log(`Server running at http://localhost:${port}`);
-    });
-    ```
-5.  **Run the server**:
-    Open your terminal in the project root and run:
-    ```bash
-    node express-server.js
-    ```
-6.  **Open your web browser** and navigate to:
-    ```
-    http://localhost:8000/
-    ```
-    You should see your graphs displayed.
-
-To stop the server, go back to your terminal and press `Ctrl+C`.
-
-## Deployment
-
-For deploying your static website, you can use serverless hosting platforms like:
-*   GitHub Pages
-*   Netlify
-*   Vercel
-*   AWS S3 with CloudFront
-*   Firebase Hosting
-
-These platforms are designed to serve static files efficiently and globally.
+## License
+This project is licensed under the ISC License.

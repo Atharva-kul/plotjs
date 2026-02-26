@@ -55,7 +55,7 @@ const Plotjs = {
             
         }
         catch (error) {
-            console.error(`2) plotjs error: formula "${formulaStr} is invalid"`)
+            console.error(`2) plotjs error: formula "${formulaStr}" is invalid`)
             return null;
         }
 
@@ -226,6 +226,92 @@ const Plotjs = {
             ctx.font = font;
             ctx.fillStyle = color;
             ctx.fillText(text, x, y);
+    },
+
+    // method 7: draw polar graph
+
+    drawPolar: (config) => {
+        const {
+            formulaStr,
+            width = 500,
+            height = 500,
+            lineColor = 'white',
+            lineWidth = 2,
+            bgColor = 'black',
+            scale = 50,
+            tRange = [0, 2 * Math.PI],
+            steps = 1000
+        } = config;
+
+        if(!formulaStr) {
+            console.error("1) plotjs Error: parameter formula must be passed to draw the graph")
+            return null;
+        }
+
+        // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
+
+        const allowedPattern = /^(?:[t0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
+
+        if (!allowedPattern.test(formulaStr)) {
+            console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
+            return null; 
+        }
+
+        let formula;
+        try {
+            const process = formulaStr.replace(/\^/g, '**')
+
+            formula = new Function('t', `
+                    const{
+                        sin, cos, tan, PI, pow, sqrt, abs, log
+                    } = Math;
+                    
+                    const sec = (a) => 1/cos(a)
+                    const cot = (a) => 1/tan(a)
+                    const cosec = (a) => 1/sin(a)
+
+                    const result = ${process}
+
+                    return Number.isFinite(result) ? result : null
+
+                `);
+            
+        }
+        catch (error) {
+            console.error(`2) plotjs error: formula "${formulaStr}" is invalid`)
+
+            return null;
+        }
+
+        // create canvas object and context
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.backgroundColor = bgColor
+        const ctx = canvas.getContext('2d');
+
+        const points = []
+        const midX = width / 2
+        const midY = height / 2
+        const[tMin, tMax] = tRange
+
+        for(let i = 0; i <= steps;  i++) {
+            let t = tMin + (i / steps) * (tMax - tMin)
+            let r = formula(t);
+
+            if(r !== null) {
+                let x = r * Math.cos(t) * scale + midX
+                let y = midY - r * Math.sin(t) * scale // inverted y-axis for canvas
+                points.push({x, y})
+            } else {
+                points.push(null)
+            }
+        }
+
+        Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+        return canvas;
+
     }
 
 }

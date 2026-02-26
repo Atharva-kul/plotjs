@@ -2,8 +2,9 @@
   "name": "mainlib",
   "version": "1.0.0",
   "description": "",
-  "main": "plotjs.js",
+  "main": "src/plotjs.js",
   "scripts": {
+    "start": "node server/express-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
