@@ -4,7 +4,6 @@
   "description": "",
   "main": "src/plotjs.js",
   "scripts": {
-    "start": "node server/express-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,8 +16,5 @@
   "bugs": {
     "url": "https://github.com/Atharva-kul/plotjs/issues"
   },
-  "homepage": "https://github.com/Atharva-kul/plotjs#readme",
-  "dependencies": {
-    "express": "^5.2.1"
-  }
+  "homepage": "https://github.com/Atharva-kul/plotjs#readme"
 }

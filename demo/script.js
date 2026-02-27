@@ -1,4 +1,4 @@
-import Plotjs from '../src/plotjs.js';
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const graphContainer = document.getElementById('graph-container');
