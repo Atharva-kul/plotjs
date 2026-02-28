@@ -1,45 +1,22 @@
-(function(window) {
-    const Plotjs = {
+import { _createFormula } from './math.js';
+import { _generateCartesianPoints, _generatePolarPoints, _generateParametricPoints } from './generator.js';
+import { _drawGraph } from './drawer.js';
+import { drawAxis, drawGrid, addText } from './enhancer.js';
 
-        _createFormula: (formulaStr, args) => {
-            // 1. Security Check
-            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E|\^)+$/;
-            if (!allowedPattern.test(formulaStr)) {
-                console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
-                return null;
-            }
-        
-            try {
-                // 2. Prepare the formula body for the new Function
-                const processedFormula = formulaStr.replace(/\^/g, '**'); // Use standard exponentiation
-                
-                const functionBody = `
-                    // Make only approved Math functions available in scope
-                    const { sin, cos, tan, PI, E, pow, sqrt, abs, log } = Math;
-                    
-                    // Define custom helper functions
-                    const sec = (a) => 1 / cos(a);
-                    const cot = (a) => 1 / tan(a);
-                    const cosec = (a) => 1 / sin(a);
-        
-                    // Calculate and return the result
-                    const result = ${processedFormula};
-                    
-                    // Ensure the result is a finite number
-                    return Number.isFinite(result) ? result : null;
-                `;
-        
-                // 3. Create and return the function
-                return new Function(...args, functionBody);
-        
-            } catch (error) {
-                // 4. Handle any syntax errors
-                console.error(`Plotjs Error: The formula "${formulaStr}" is invalid.`);
-                return null;
-            }
-        },
+export function createPlotjs(adapter) {
+    const { createCanvas, requestAnimationFrame, cancelAnimationFrame } = adapter;
 
-        // Method 1: Trignometric graphs
+    return {
+        createCanvas,
+        _createFormula,
+        _generateCartesianPoints,
+        _generatePolarPoints,
+        _generateParametricPoints,
+        _drawGraph,
+        drawAxis,
+        drawGrid,
+        addText,
+
         drawCartesian: (config) => {
             const {
                 formulaStr,
@@ -60,26 +37,23 @@
                 return null;
             }
     
-            const formula = Plotjs._createFormula(formulaStr, ['x', 't']);
+            const formula = _createFormula(formulaStr, ['x', 't']);
             if(!formula) return null;
     
-            const canvas = existingCanvas || document.createElement('canvas');
-            if (!existingCanvas) {
-                canvas.width = width;
-                canvas.height = height;
+            const canvas = existingCanvas || createCanvas(width, height);
+            if (!existingCanvas && canvas.style) {
                 canvas.style.backgroundColor = bgColor;
             }
             const ctx = canvas.getContext('2d');
     
-            const points = Plotjs._generateCartesianPoints({
-                formula, width: canvas.width, height: canvas.height, scale, xRange, yRange, t
+            const points = _generateCartesianPoints({
+                formula, width: canvas.width || width, height: canvas.height || height, scale, xRange, yRange, t
             });
     
-            Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+            _drawGraph(points, ctx, { lineColor, lineWidth });
             return canvas;
         },
 
-        // Method 7: draw polar graph
         drawPolar: (config) => {
             const {
                 formulaStr,
@@ -100,22 +74,20 @@
                 return null;
             }
     
-            const formula = Plotjs._createFormula(formulaStr, ['x', 't']);
+            const formula = _createFormula(formulaStr, ['x', 't']);
             if(!formula) return null;
     
-            const canvas = existingCanvas || document.createElement('canvas');
-            if (!existingCanvas) {
-                canvas.width = width;
-                canvas.height = height;
+            const canvas = existingCanvas || createCanvas(width, height);
+            if (!existingCanvas && canvas.style) {
                 canvas.style.backgroundColor = bgColor;
             }
             const ctx = canvas.getContext('2d');
     
-            const points = Plotjs._generatePolarPoints({
-                formula, width: canvas.width, height: canvas.height, scale, tRange, steps, t
+            const points = _generatePolarPoints({
+                formula, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t
             });
     
-            Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+            _drawGraph(points, ctx, { lineColor, lineWidth });
             return canvas;
         },
     
@@ -140,31 +112,28 @@
                 return null;
             }
     
-            const fX = Plotjs._createFormula(formulaXStr, ['x', 't']);
-            const fY = Plotjs._createFormula(formulaYStr, ['x', 't']);
+            const fX = _createFormula(formulaXStr, ['x', 't']);
+            const fY = _createFormula(formulaYStr, ['x', 't']);
     
             if(!fX || !fY) return null;
     
-            const canvas = existingCanvas || document.createElement('canvas');
-            if (!existingCanvas) {
-                canvas.width = width;
-                canvas.height = height;
+            const canvas = existingCanvas || createCanvas(width, height);
+            if (!existingCanvas && canvas.style) {
                 canvas.style.backgroundColor = bgColor;
             }
             const ctx = canvas.getContext('2d');
     
-            const points = Plotjs._generateParametricPoints({
-                fX, fY, width: canvas.width, height: canvas.height, scale, tRange, steps, t
+            const points = _generateParametricPoints({
+                fX, fY, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t
             });
     
-            Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+            _drawGraph(points, ctx, { lineColor, lineWidth });
             return canvas;
         },
     
-        // Method 9: loop animate the graph for a given formula
         loopAnimate: (config) => {
             const {
-                type = 'trig', // 'trig', 'polar', 'parametric'
+                type = 'cartesian', // 'cartesian', 'polar', 'parametric'
                 formulaStr,
                 formulaXStr,
                 formulaYStr,
@@ -187,25 +156,25 @@
     
             let formula, fX, fY;
             if (type === 'parametric') {
-                fX = Plotjs._createFormula(formulaXStr, ['x', 't']);
-                fY = Plotjs._createFormula(formulaYStr, ['x', 't']);
+                fX = _createFormula(formulaXStr, ['x', 't']);
+                fY = _createFormula(formulaYStr, ['x', 't']);
                 if (!fX || !fY) return null;
             } else {
                 if (!formulaStr) {
                     console.error("Plotjs Error: formulaStr required for " + type);
                     return null;
                 }
-                formula = Plotjs._createFormula(formulaStr, ['x', 't']);
+                formula = _createFormula(formulaStr, ['x', 't']);
                 if (!formula) return null;
             }
     
-            const canvas = existingCanvas || document.createElement('canvas');
-            if (!existingCanvas) {
-                canvas.width = width;
-                canvas.height = height;
+            const canvas = existingCanvas || createCanvas(width, height);
+            if (!existingCanvas && canvas.style) {
                 canvas.style.backgroundColor = bgColor;
             }
             const ctx = canvas.getContext('2d');
+            const cw = canvas.width || width;
+            const ch = canvas.height || height;
     
             let startTime = null;
             let animationId = null;
@@ -220,23 +189,23 @@
                 }
     
                 const t = (elapsed / 1000) * speed;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, cw, ch);
     
-                if (showGrid && Plotjs.drawGrid) Plotjs.drawGrid(ctx, canvas.width, canvas.height, 50);
-                if (showAxis && Plotjs.drawAxis) Plotjs.drawAxis(ctx, canvas.width, canvas.height);
+                if (showGrid) drawGrid(ctx, cw, ch, 50);
+                if (showAxis) drawAxis(ctx, cw, ch);
     
                 let points;
-                const genConfig = { ...config, width: canvas.width, height: canvas.height, t };
+                const genConfig = { ...config, width: cw, height: ch, t };
 
                 if (type === 'polar') {
-                    points = Plotjs._generatePolarPoints({ formula, ...genConfig });
+                    points = _generatePolarPoints({ formula, ...genConfig });
                 } else if (type === 'parametric') {
-                    points = Plotjs._generateParametricPoints({ fX, fY, ...genConfig });
+                    points = _generateParametricPoints({ fX, fY, ...genConfig });
                 } else {
-                    points = Plotjs._generateCartesianPoints({ formula, ...genConfig });
+                    points = _generateCartesianPoints({ formula, ...genConfig });
                 }
     
-                Plotjs._drawGraph(points, ctx, { lineColor, lineWidth });
+                _drawGraph(points, ctx, { lineColor, lineWidth });
                 animationId = requestAnimationFrame(renderFrame);
             };
     
@@ -252,8 +221,5 @@
                 }
             };
         }
-    }
-    
-    window.Plotjs = Plotjs;
-    
-    })(window);
+    };
+}

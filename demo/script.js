@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(h2);
         graphContainer.appendChild(sineCanvas);
         Plotjs.drawAxis(sineCanvas.getContext('2d'), 900, 300);
+        Plotjs.loopAnimate({
+            formulaStr: 'sin(x^2 - t) - log(x)',
+            canvas: sineCanvas,
+            lineColor: '#61dafb',
+            speed: 2.5
+        });
     }
 
     // Example 2: Cosine wave
@@ -48,11 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Example 3: A more complex function (e.g., x^2)
-    const complexCanvas = Plotjs.drawTrig({
+    const complexCanvas = Plotjs.drawCartesian({
         formulaStr: 'x^2',
         width: 600,
         height: 300,
-        lineColor: '#a9a9a9',
+        lineColor: '#d97e7e',
         bgColor: '#01050f',
         scale: 50
     });

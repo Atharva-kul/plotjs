@@ -1,20 +1,35 @@
 {
-  "name": "mainlib",
+  "name": "plotjs",
   "version": "1.0.0",
-  "description": "",
-  "main": "src/plotjs.js",
+  "description": "Plotjs is a lightweight isomorphic JavaScript library for drawing mathematical function graphs directly on an HTML canvas or Node canvas.",
+  "type": "module",
+  "main": "dist/index.node.cjs",
+  "exports": {
+    ".": {
+      "browser": "./dist/index.browser.js",
+      "import": "./dist/index.node.js",
+      "require": "./dist/index.node.cjs"
+    }
+  },
   "scripts": {
+    "build": "node build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Atharva-kul/plotjs.git"
   },
-  "keywords": [],
+  "keywords": ["canvas", "math", "graph", "plot", "isomorphic"],
   "author": "",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Atharva-kul/plotjs/issues"
   },
-  "homepage": "https://github.com/Atharva-kul/plotjs#readme"
+  "homepage": "https://github.com/Atharva-kul/plotjs#readme",
+  "dependencies": {
+    "canvas": "^3.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  }
 }

@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas: mainCanvas,
         width: 900,
         height: 300,
-        lineColor: '#00f3ff', // neon blue
+        lineColor: '#7bf356', // neon blue
         lineWidth: 2,
         bgColor: 'transparent',
         scale: 60,
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formulaYStr: '4 * sin(x - t) - 2 * sin(7 * x - t * 0.5)',
         width: 600,
         height: 600,
-        lineColor: '#00ff41', // neon green
+        lineColor: '#7bc3ff', // neon blue
         lineWidth: 1.5,
         bgColor: 'transparent',
         scale: 50, // Increased scale for larger canvas
