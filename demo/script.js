@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const graphContainer = document.getElementById('graph-container');
 
     // Example 1: Sine wave
-    const sineCanvas = Plotjs.drawTrig({
+    const sineCanvas = Plotjs.drawCartesian({
         formulaStr: 'sin(x^2) - log(x)',
         width: 900,
         height: 300,
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Example 2: Cosine wave
-    const cosineCanvas = Plotjs.drawTrig({
+    const cosineCanvas = Plotjs.drawCartesian({
         formulaStr: 'cos(x + t)',
         width: 900,
         height: 300,
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const polar = Plotjs.drawPolar({
-        formulaStr: '2 + sin(5 * t)',
+        formulaStr: '2 + sin(5 * x)',
         width: 600,
         height: 600,
         lineColor: '#ff6347',
@@ -89,8 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const parametric = Plotjs.drawParametric({
-        formulaXStr: '3 * cos(t) + 2 * cos(3 * t)',
-        formulaYStr: '3 * sin(t) - 2 * sin(3 * t)',
+        formulaXStr: '3 * cos(x) + 2 * cos(3 * x)',
+        formulaYStr: '3 * sin(x) - 2 * sin(3 * x)',
         width: 600,
         height: 600,
         lineColor: '#47ff56',

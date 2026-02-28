@@ -56,27 +56,28 @@ h1 {
 main {
     flex-grow: 1;
     display: flex;
-    overflow-y: auto; /* Allow scrolling for larger cards */
-    padding-right: 10px;
+    overflow: hidden; /* Remove scrolling */
+    padding-right: 0;
 }
 
 .graph-grid {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     width: 100%;
+    height: 100%;
 }
 
 .large {
     flex: 2;
-    min-width: 600px;
+    /* Remove min-width */
 }
 
 .side-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 30px;
-    min-width: 400px;
+    gap: 20px;
+    /* Remove min-width */
 }
 
 .graph-card {
@@ -86,7 +87,8 @@ main {
     display: flex;
     flex-direction: column;
     box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.1);
-    min-height: 400px;
+    min-height: 0; /* Allow shrinking */
+    flex: 1;
 }
 
 .card-header {

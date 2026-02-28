@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const mainCanvas = document.createElement('canvas');
     mainCanvas.width = 900;
-    mainCanvas.height = 300;
+    mainCanvas.height = 400;
     mainContainer.appendChild(mainCanvas);
 
     Plotjs.loopAnimate({
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Side Graph 1: Polar (Intricate Rose Curve) ---
     // Formula for an intricate rose curve
     const polarCanvas = Plotjs.drawPolar({
-        formulaStr: '2 * sin(6 * t) + cos(12 * t)',
+        formulaStr: '2 * sin(6 * x) + cos(12 * x)',
         width: 600,
         height: 600,
         lineColor: '#ff00ff', // neon magenta
@@ -56,9 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Side Graph 2: Parametric (Hypotrochoid) ---
     // A complex parametric curve (spirograph-like)
-    const parametricCanvas = Plotjs.drawParametric({
-        formulaXStr: '4 * cos(t) + 2 * cos(7 * t)',
-        formulaYStr: '4 * sin(t) - 2 * sin(7 * t)',
+    const parametricAnimation = Plotjs.loopAnimate({
+        type: 'parametric',
+        formulaXStr: '4 * cos(x - t) + 2 * cos(7 * x - t * 0.5)',
+        formulaYStr: '4 * sin(x - t) - 2 * sin(7 * x - t * 0.5)',
         width: 600,
         height: 600,
         lineColor: '#00ff41', // neon green
@@ -66,12 +67,13 @@ document.addEventListener('DOMContentLoaded', () => {
         bgColor: 'transparent',
         scale: 50, // Increased scale for larger canvas
         tRange: [0, 2 * Math.PI],
-        steps: 1000
+        steps: 1000,
+        speed: 1,
+        showAxis: false,
+        showGrid: true
     });
 
-    if (parametricCanvas) {
-        parametricContainer.appendChild(parametricCanvas);
-        const ctx = parametricCanvas.getContext('2d');
-        Plotjs.drawGrid(ctx, 600, 600, 50, 'rgba(0, 243, 255, 0.1)', 0.5);
+    if (parametricAnimation) {
+        parametricContainer.appendChild(parametricAnimation.canvas);
     }
 });
