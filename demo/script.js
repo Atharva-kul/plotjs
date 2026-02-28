@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 900,
         height: 300,
         lineColor: '#61dafb',
-        bgColor: '#105a44',
+        bgColor: '#01050f',
         scale: 50, // Adjust scale for better visualization if needed
         //xRange: [-1, 25], // Optional: specify x range for better control
         //yRange: [-5, 5] // Optional: specify y range for better control
@@ -26,10 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Example 2: Cosine wave
     const cosineCanvas = Plotjs.drawTrig({
         formulaStr: 'cos(x + t)',
-        width: 600,
+        width: 900,
         height: 300,
         lineColor: '#ff69b4',
-        bgColor: '#282c34',
+        bgColor: '#01050f',
         scale: 50
     });
 
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 600,
         height: 300,
         lineColor: '#a9a9a9',
-        bgColor: '#282c34',
+        bgColor: '#01050f',
         scale: 50
     });
 
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 600,
         height: 600,
         lineColor: '#ff6347',
-        bgColor: '#282c34',
+        bgColor: '#01050f',
         scale: 50
 
     })
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 600,
         height: 600,
         lineColor: '#47ff56',
-        bgColor: '#282c34',
+        bgColor: '#01050f',
         scale: 50
     })
 

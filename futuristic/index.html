@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Plotjs Graph</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="hud-container">
+        <header>
+            <div class="system-status">SYSTEM STATUS: <span class="online">ONLINE</span></div>
+            <h1>CORE_NEURAL_INTERFACE v2.0</h1>
+            <div class="timestamp" id="timestamp"></div>
+        </header>
+        
+        <main>
+            <div class="graph-grid">
+                <div class="graph-card large">
+                    <div class="card-header">WAVE_INTERFERENCE_PATTERN</div>
+                    <div id="main-graph"></div>
+                    <div class="card-footer">DATA_STREAM_01 // PULSE_FREQ: ACTIVE</div>
+                </div>
+                
+                <div class="side-panel">
+                    <div class="graph-card small">
+                        <div class="card-header">POLAR_COORDINATE_VECTOR</div>
+                        <div id="polar-graph"></div>
+                    </div>
+                    <div class="graph-card small">
+                        <div class="card-header">PARAMETRIC_LUNAR_OSCILLATION</div>
+                        <div id="parametric-graph"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="footer-bar">
+            <div class="scanning">SCANNING SECTOR 7G...</div>
+            <div class="coordinates">X: 127.0.0.1 | Y: 8080 | Z: 443</div>
+        </div>
+    </div>
+
+    <script src="../src/plotjs.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

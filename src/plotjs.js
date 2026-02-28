@@ -1,6 +1,44 @@
 (function(window) {
     const Plotjs = {
 
+        _createFormula: (formulaStr, args) => {
+            // 1. Security Check
+            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E|\^)+$/;
+            if (!allowedPattern.test(formulaStr)) {
+                console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
+                return null;
+            }
+        
+            try {
+                // 2. Prepare the formula body for the new Function
+                const processedFormula = formulaStr.replace(/\^/g, '**'); // Use standard exponentiation
+                
+                const functionBody = `
+                    // Make only approved Math functions available in scope
+                    const { sin, cos, tan, PI, E, pow, sqrt, abs, log } = Math;
+                    
+                    // Define custom helper functions
+                    const sec = (a) => 1 / cos(a);
+                    const cot = (a) => 1 / tan(a);
+                    const cosec = (a) => 1 / sin(a);
+        
+                    // Calculate and return the result
+                    const result = ${processedFormula};
+                    
+                    // Ensure the result is a finite number
+                    return Number.isFinite(result) ? result : null;
+                `;
+        
+                // 3. Create and return the function
+                return new Function(...args, functionBody);
+        
+            } catch (error) {
+                // 4. Handle any syntax errors
+                console.error(`Plotjs Error: The formula "${formulaStr}" is invalid.`);
+                return null;
+            }
+        },
+
         // Method 1: Trignometric graphs
     
         drawTrig: (config) => {
@@ -9,14 +47,15 @@
     
             const {
                 formulaStr, // input as string
-                unit = 'rad',
+                canvas: existingCanvas,
                 width = 500,
                 height = 250,
                 lineColor = 'white',
                 lineWidth = 2,
                 bgColor = 'black',
                 xRange,
-                yRange
+                yRange,
+                scale = 50
             } = config;
     
             if(!formulaStr) {
@@ -24,55 +63,27 @@
                 return null;
             }
     
-            // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
-    
-            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
-    
-            if (!allowedPattern.test(formulaStr)) {
-                console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
-                return null; 
-            }
-    
-            // define the formula function using the input string, and handle errors if the formula is invalid
-    
-            let formula;
-            try {
-                const process = formulaStr.replace(/\^/g, '**')
-    
-                formula = new Function('x', 't', `
-                        const{
-                            sin, cos, tan, PI, pow, sqrt, abs, log
-                        } = Math;
-                        
-                        const sec = (a) => 1/cos(a)
-                        const cot = (a) => 1/tan(a)
-                        const cosec = (a) => 1/sin(a)
-    
-                        const result = ${process}
-    
-                        return Number.isFinite(result) ? result : null
-    
-                    `);
-                
-            }
-            catch (error) {
-                console.error(`2) plotjs error: formula "${formulaStr}" is invalid`)
+            const formula = Plotjs._createFormula(formulaStr, ['x', 't']);
+
+            if(!formula) {
                 return null;
             }
     
             // create canvas object and context
     
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            canvas.style.backgroundColor = bgColor
+            const canvas = existingCanvas || document.createElement('canvas');
+            if (!existingCanvas) {
+                canvas.width = width;
+                canvas.height = height;
+                canvas.style.backgroundColor = bgColor;
+            }
             const ctx = canvas.getContext('2d');
     
             const points = Plotjs._generatePoints({
                 formula: (x) => formula(x, config.t || 0),
-                width,
-                height,
-                scale: config.scale || 50,
+                width: canvas.width,
+                height: canvas.height,
+                scale,
                 xRange,
                 yRange
             })
@@ -262,38 +273,9 @@
                 return null;
             }
     
-            // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
-    
-            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
-    
-            if (!allowedPattern.test(formulaStr)) {
-                console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaStr}" contains unauthorized functions, variables, or characters.`);
-                return null; 
-            }
-    
-            let formula;
-            try {
-                const process = formulaStr.replace(/\^/g, '**')
-    
-                formula = new Function('t', `
-                        const{
-                            sin, cos, tan, PI, pow, sqrt, abs, log
-                        } = Math;
-                        
-                        const sec = (a) => 1/cos(a)
-                        const cot = (a) => 1/tan(a)
-                        const cosec = (a) => 1/sin(a)
-    
-                        const result = ${process}
-    
-                        return Number.isFinite(result) ? result : null
-    
-                    `);
-                
-            }
-            catch (error) {
-                console.error(`2) plotjs error: formula "${formulaStr}" is invalid`)
-    
+            const formula = Plotjs._createFormula(formulaStr, ['t']);
+
+            if(!formula) {
                 return null;
             }
     
@@ -347,40 +329,8 @@
                 return null;
             }
     
-            // Security check: only allow certain characters and functions in the formula string to prevent malicious code execution
-    
-            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
-    
-            if (!allowedPattern.test(formulaXStr)) {
-                console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaXStr}" contains unauthorized functions, variables, or characters.`);
-                return null; 
-            }
-    
-            if (!allowedPattern.test(formulaYStr)) {
-                console.error(`3) Plotjs Security Error [ERR_UNAUTHORIZED_CODE]: The formula "${formulaYStr}" contains unauthorized functions, variables, or characters.`);
-                return null; 
-            }
-    
-            let formulaX, formulaY;
-    
-            const createFormula = (str) => {
-                try {
-                    const process = str.replace(/\^/g, '**');
-                    return new Function('t', `
-                        const { sin, cos, tan, PI, pow, sqrt, abs, log } = Math;
-                        const sec = (a) => 1/cos(a);
-                        const cosec = (a) => 1/sin(a);
-                        const cot = (a) => 1/tan(a);
-                        const result = ${process};
-                        return Number.isFinite(result) ? result : null;`);
-                } catch (e) {
-                    console.error(`Plotjs Error: Formula "${str}" is invalid.`);
-                    return null;
-                }
-            };
-    
-            const fX = createFormula(formulaXStr);
-            const fY = createFormula(formulaYStr);
+            const fX = Plotjs._createFormula(formulaXStr, ['t']);
+            const fY = Plotjs._createFormula(formulaYStr, ['t']);
     
             if(!fX || !fY) {
                 console.error("4) Plotjs Error: Both formulaXStr and formulaYStr must be valid formulas.");
@@ -442,27 +392,9 @@
                 return null;
             }
     
-            // Security check: allow 'x', 't', and math functions
-            const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|\^)+$/;
-    
-            if (!allowedPattern.test(formulaStr)) {
-                console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
-                return null;
-            }
-    
-            let formula;
-            try {
-                const process = formulaStr.replace(/\^/g, '**');
-                formula = new Function('x', 't', `
-                    const { sin, cos, tan, PI, pow, sqrt, abs, log } = Math;
-                    const sec = (a) => 1/cos(a);
-                    const cot = (a) => 1/tan(a);
-                    const cosec = (a) => 1/sin(a);
-                    const result = ${process};
-                    return Number.isFinite(result) ? result : null;
-                `);
-            } catch (error) {
-                console.error(`Plotjs Error: formula "${formulaStr}" is invalid`);
+            const formula = Plotjs._createFormula(formulaStr, ['x', 't']);
+
+            if(!formula) {
                 return null;
             }
     
@@ -513,7 +445,6 @@
                 stop: () => cancelAnimationFrame(animationId),
                 play: () => {
                     cancelAnimationFrame(animationId);
-
                     startTime = null;
                     animationId = requestAnimationFrame(renderFrame);
                 }
