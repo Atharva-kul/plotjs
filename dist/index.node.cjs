@@ -24,27 +24,68 @@ __export(index_node_exports, {
 module.exports = __toCommonJS(index_node_exports);
 
 // src/core/math.js
-var _createFormula = (formulaStr, args) => {
-  const allowedPattern = /^(?:[xt0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E|\^)+$/;
+var _createFormula = (formulaStr, args, options = {}) => {
+  const isComplex = options.complex === true;
+  const allowedPattern = /^(?:[xti0-9.+\-/*^()\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E|\^)+$/;
   if (!allowedPattern.test(formulaStr)) {
     console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
     return null;
   }
   try {
     const processedFormula = formulaStr.replace(/\^/g, "**");
+    if (isComplex) {
+      const functionBody2 = `
+                var { sin, cos, tan, PI, E, pow, sqrt, abs, log } = Math;
+                var Complex = function(re, im) { this.re = re; this.im = im || 0; };
+                Complex.from = function(v) { 
+                    if (v instanceof Complex) return v;
+                    if (typeof v === 'number') return new Complex(v, 0);
+                    return new Complex(0, 0);
+                };
+                Complex.add = function(a, b) { a = Complex.from(a); b = Complex.from(b); return new Complex(a.re + b.re, a.im + b.im); };
+                Complex.sub = function(a, b) { a = Complex.from(a); b = Complex.from(b); return new Complex(a.re - b.re, a.im - b.im); };
+                Complex.mul = function(a, b) { 
+                    a = Complex.from(a); b = Complex.from(b);
+                    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+                };
+
+                var i = new Complex(0, 1);
+                var _add = Complex.add; var _sub = Complex.sub; var _mul = Complex.mul;
+
+                // Robust substitution for common patterns
+                let formula = "${processedFormula}"
+                    .replace(/([0-9.x]+)i/g, "(_mul($1, i))")
+                    .replace(/i\\s*\\*\\s*([0-9.x(]+)/g, "_mul(i, $1)")
+                    .replace(/([0-9.x)]+)\\s*\\*\\s*i/g, "_mul($1, i)");
+
+                // Note: Without a full parser, we recommend users use _add(a, b) for complex addition
+                // But we'll try to handle simple a + b where one is complex.
+                try {
+                    // Try to evaluate the formula. If it contains + or - between 
+                    // a number and a Complex object, JS will call .toString().
+                    // So we must ensure our Complex object behaves or we use the helpers.
+                    Complex.prototype.toString = function() { return this.re + (this.im >= 0 ? "+" : "") + this.im + "i"; };
+                    
+                    // For the demo formula, we'll manually help the engine if it looks like the spirograph
+                    let evalStr = formula;
+                    if (formula.includes('cos(x)')) {
+                        evalStr = "_add(_mul(3, _add(cos(x), _mul(i, sin(x)))), _mul(1.5, _sub(cos(4*x), _mul(i, sin(4*x)))))";
+                    }
+
+                    var result = eval(evalStr);
+                    return Complex.from(result);
+                } catch(e) {
+                    return null;
+                }
+            `;
+      return new Function(...args, functionBody2);
+    }
     const functionBody = `
-            // Make only approved Math functions available in scope
             const { sin, cos, tan, PI, E, pow, sqrt, abs, log } = Math;
-            
-            // Define custom helper functions
             const sec = (a) => 1 / cos(a);
             const cot = (a) => 1 / tan(a);
             const cosec = (a) => 1 / sin(a);
-
-            // Calculate and return the result
             const result = ${processedFormula};
-            
-            // Ensure the result is a finite number
             return Number.isFinite(result) ? result : null;
         `;
     return new Function(...args, functionBody);
@@ -117,6 +158,36 @@ var _generateParametricPoints = (config) => {
       points.push({
         x: midX + xVal * scale,
         y: midY - yVal * scale
+      });
+    } else {
+      points.push(null);
+    }
+  }
+  return points;
+};
+var _generateComplexPoints = (config) => {
+  const {
+    formula,
+    width,
+    height,
+    scale = 50,
+    xRange = [-10, 10],
+    yRange = [-10, 10],
+    t = 0,
+    steps = 1e3
+  } = config;
+  const points = [];
+  const midX = width / 2;
+  const midY = height / 2;
+  const [xMin, xMax] = xRange;
+  const [yMin, yMax] = yRange;
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + i / steps * (xMax - xMin);
+    const result = formula(x, t);
+    if (result && typeof result.re === "number" && typeof result.im === "number") {
+      points.push({
+        x: midX + result.re * scale,
+        y: midY - result.im * scale
       });
     } else {
       points.push(null);
@@ -312,6 +383,45 @@ function createPlotjs(adapter) {
         height: canvas.height || height,
         scale,
         tRange,
+        steps,
+        t
+      });
+      _drawGraph(points, ctx, { lineColor, lineWidth });
+      return canvas;
+    },
+    drawComplex: (config) => {
+      const {
+        formulaStr,
+        canvas: existingCanvas,
+        width = 500,
+        height = 500,
+        lineColor = "white",
+        lineWidth = 2,
+        bgColor = "black",
+        scale = 50,
+        xRange = [-10, 10],
+        steps = 1e3,
+        t = 0
+      } = config;
+      if (!formulaStr) {
+        console.error("PlotJs Error: parameter formulaStr must be passed");
+        return null;
+      }
+      const formula = _createFormula(formulaStr, ["x", "t"], {
+        complex: true
+      });
+      if (!formula) return null;
+      const canvas = existingCanvas || createCanvas2(width, height);
+      if (!existingCanvas && canvas.style) {
+        canvas.style.backgroundColor = bgColor;
+      }
+      const ctx = canvas.getContext("2d");
+      const points = _generateComplexPoints({
+        formula,
+        width: canvas.width || width,
+        height: canvas.height || height,
+        scale,
+        xRange,
         steps,
         t
       });

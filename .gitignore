@@ -1,20 +1,34 @@
 # Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Build outputs
 dist/
 
 # Test outputs
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
 my-graph.png
+complex-test.png
+complex-test-line.png
+
+# Environment & Secrets
+.env
+.env.*
+.DS_Store
+Thumbs.db
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# OS specific files
-.DS_Store
-Thumbs.db
+lerna-debug.log*
 
 # IDE/Editor files
 .vscode/
@@ -24,6 +38,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+*.bak
+*.tmp
+*.temp
 
 # Project specific
 plotjs_roadmap.txt

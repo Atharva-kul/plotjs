@@ -75,3 +75,37 @@ export const _generateParametricPoints = (config) => {
     }
     return points;
 };
+
+export const _generateComplexPoints = (config) => {
+    const {
+        formula,
+        width, height,
+        scale = 50,
+        xRange = [-10,10],
+        yRange = [-10,10],
+        t = 0,
+        steps = 1000
+    } = config;
+
+    const points = []
+    const midX = width / 2
+    const midY = height / 2
+    const [xMin, xMax] = xRange;
+    const [yMin, yMax] = yRange
+
+    for(let i=0; i<=steps; i++) {
+        const x = xMin + (i/steps) * (xMax - xMin)
+        
+        const result = formula(x, t)
+
+        if(result && typeof result.re === 'number' && typeof result.im === 'number') {
+            points.push({
+                x: midX + (result.re * scale),
+                y: midY - result.im * scale
+            })
+        } else {
+            points.push(null)
+        }
+
+    } return points
+}

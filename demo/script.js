@@ -116,6 +116,29 @@ document.addEventListener('DOMContentLoaded', () => {
         //Plotjs.loopAnimate(parametric, lineColor='#47ff56', bgColor='#282c34', scale=50, formulaXStr='3 * cos(t) + 2 * cos(3 * t)', formulaYStr='3 * sin(t) - 2 * sin(3 * t)', tStart=0, tEnd=20 * Math.PI, tStep=0.1, delay=30);
     }
 
-    
+    const ArgandPlane = Plotjs.createCanvas(600, 600);
+    if(ArgandPlane) {
+        const h2 = document.createElement('h2')
+        h2.textContent = 'Complex Argand plane: 3*cos(x) + 3*i*sin(x*2)'
+        graphContainer.appendChild(h2)
+        graphContainer.appendChild(ArgandPlane)
+
+        const ctx = ArgandPlane.getContext('2d');
+        ArgandPlane.style.backgroundColor = '#01050f';
+
+        // 1. Draw Grid/Axis FIRST
+        Plotjs.drawAxis(ctx, 600, 600)
+        Plotjs.drawGrid(ctx, 600, 600, 50)
+
+        // 2. Draw Graph ON TOP
+        Plotjs.drawComplex({
+            canvas: ArgandPlane,
+            formulaStr: '3 * cos(x) + 3 * i * sin(x * 2)',
+            lineColor: '#00ffff',
+            scale: 60,
+            xRange: [0, 2 * Math.PI],
+            steps: 2000
+        })
+    }
 
 });

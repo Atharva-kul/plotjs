@@ -1,5 +1,5 @@
 import { _createFormula } from './math.js';
-import { _generateCartesianPoints, _generatePolarPoints, _generateParametricPoints } from './generator.js';
+import { _generateCartesianPoints, _generatePolarPoints, _generateParametricPoints, _generateComplexPoints } from './generator.js';
 import { _drawGraph } from './drawer.js';
 import { drawAxis, drawGrid, addText } from './enhancer.js';
 
@@ -129,6 +129,48 @@ export function createPlotjs(adapter) {
     
             _drawGraph(points, ctx, { lineColor, lineWidth });
             return canvas;
+        },
+
+        drawComplex: (config) => {
+            const {
+                formulaStr,
+                canvas: existingCanvas,
+                width = 500,
+                height = 500,
+                lineColor = 'white',
+                lineWidth = 2,
+                bgColor = 'black',
+                scale = 50,
+                xRange = [-10, 10],
+                steps = 1000,
+                t = 0
+            } = config;
+
+            if(!formulaStr) {
+                console.error("PlotJs Error: parameter formulaStr must be passed")
+                return null
+            }
+
+            const formula = _createFormula(formulaStr, ['x', 't'], {
+                complex: true
+            })
+
+            if(!formula) return null
+
+            const canvas = existingCanvas || createCanvas(width, height)
+            if(!existingCanvas && canvas.style) {
+                canvas.style.backgroundColor = bgColor
+            }
+
+            const ctx = canvas.getContext('2d')
+
+            const points = _generateComplexPoints({
+                formula, width: canvas.width || width, height:  canvas.height || height, scale, xRange, steps, t
+            })
+
+            _drawGraph(points, ctx, {lineColor, lineWidth})
+            return canvas
+
         },
     
         loopAnimate: (config) => {

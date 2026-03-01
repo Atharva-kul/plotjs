@@ -49,3 +49,4 @@ export const addText = (
         ctx.fillStyle = color;
         ctx.fillText(text, x, y);
 };
+
