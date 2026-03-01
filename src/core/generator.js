@@ -91,21 +91,29 @@ export const _generateComplexPoints = (config) => {
     const midX = width / 2
     const midY = height / 2
     const [xMin, xMax] = xRange;
-    const [yMin, yMax] = yRange
 
     for(let i=0; i<=steps; i++) {
         const x = xMin + (i/steps) * (xMax - xMin)
         
-        const result = formula(x, t)
-
-        if(result && typeof result.re === 'number' && typeof result.im === 'number') {
-            points.push({
-                x: midX + (result.re * scale),
-                y: midY - result.im * scale
-            })
+        const rawResult = formula(x, t)
+        
+        // Handle both Complex objects and plain numbers
+        let re = 0, im = 0;
+        if (rawResult !== null && typeof rawResult === 'object' && 're' in rawResult) {
+            re = rawResult.re;
+            im = rawResult.im || 0;
+        } else if (typeof rawResult === 'number' && isFinite(rawResult)) {
+            re = rawResult;
+            im = 0;
         } else {
-            points.push(null)
+            points.push(null);
+            continue;
         }
+
+        points.push({
+            x: midX + (re * scale),
+            y: midY - (im * scale)
+        });
 
     } return points
 }

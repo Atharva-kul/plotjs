@@ -116,29 +116,49 @@ document.addEventListener('DOMContentLoaded', () => {
         //Plotjs.loopAnimate(parametric, lineColor='#47ff56', bgColor='#282c34', scale=50, formulaXStr='3 * cos(t) + 2 * cos(3 * t)', formulaYStr='3 * sin(t) - 2 * sin(3 * t)', tStart=0, tEnd=20 * Math.PI, tStep=0.1, delay=30);
     }
 
-    const ArgandPlane = Plotjs.createCanvas(600, 600);
+    const ArgandPlane = Plotjs.drawComplex({
+        formulaStr: '3 * (cos(x) + i * sin(x)) + 1.5 * (cos(4 * x) - i * sin(4 * x))',
+        width: 600,
+        height: 600,
+        lineColor: '#00ffff',
+        bgColor: '#01050f',
+        scale: 60,
+        xRange: [0, 2 * Math.PI],
+        steps: 2000
+    })
+
     if(ArgandPlane) {
         const h2 = document.createElement('h2')
-        h2.textContent = 'Complex Argand plane: 3*cos(x) + 3*i*sin(x*2)'
+        h2.textContent = 'Complex Spirograph: 3*(cos(x) + i*sin(x)) + 1.5*(cos(4x) - i*sin(4x))'
         graphContainer.appendChild(h2)
         graphContainer.appendChild(ArgandPlane)
 
         const ctx = ArgandPlane.getContext('2d');
-        ArgandPlane.style.backgroundColor = '#01050f';
-
-        // 1. Draw Grid/Axis FIRST
         Plotjs.drawAxis(ctx, 600, 600)
         Plotjs.drawGrid(ctx, 600, 600, 50)
-
-        // 2. Draw Graph ON TOP
-        Plotjs.drawComplex({
-            canvas: ArgandPlane,
-            formulaStr: '3 * cos(x) + 3 * i * sin(x * 2)',
-            lineColor: '#00ffff',
-            scale: 60,
-            xRange: [0, 2 * Math.PI],
-            steps: 2000
-        })
     }
 
+    // --- NEW: High-Complexity Multi-Harmonic Graph ---
+    const ComplexLace = Plotjs.drawComplex({
+        // 4 layers of rotating vectors with increasing frequencies
+        formulaStr: '2.5 * (cos(x) + i * sin(x)) + 1.2 * (cos(5*x) + i * sin(5*x)) + 0.6 * (cos(13*x) - i * sin(13*x)) + 0.3 * (cos(23*x) + i * sin(23*x))',
+        width: 700,
+        height: 700,
+        lineColor: '#ff00ff', // Neon Magenta
+        bgColor: '#01050f',
+        scale: 70,
+        xRange: [0, 2 * Math.PI],
+        steps: 5000 // Increased steps to capture the high-frequency detail
+    })
+
+    if(ComplexLace) {
+        const h2 = document.createElement('h2')
+        h2.textContent = 'Complex Lace (4-Harmonic Fourier Series)'
+        graphContainer.appendChild(h2)
+        graphContainer.appendChild(ComplexLace)
+
+        const ctx = ComplexLace.getContext('2d');
+        Plotjs.drawAxis(ctx, 700, 700)
+        Plotjs.drawGrid(ctx, 700, 700, 50)
+    }
 });

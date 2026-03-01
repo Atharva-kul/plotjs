@@ -34,8 +34,63 @@ var _createFormula = (formulaStr, args, options = {}) => {
   try {
     const processedFormula = formulaStr.replace(/\^/g, "**");
     if (isComplex) {
+      const transpile = (formula) => {
+        const tokens = formula.match(/[0-9.]+|sin|cos|tan|cosec|sec|cot|[xti]|\+|\-|\*|\/|\(|\)|\^/g);
+        if (!tokens) return formula;
+        let pos = 0;
+        const peek = () => tokens[pos];
+        const consume = () => tokens[pos++];
+        const parsePrimary = () => {
+          let t = consume();
+          if (t === "(") {
+            let res = parseExpr();
+            consume();
+            return res;
+          }
+          if (["sin", "cos", "tan", "cosec", "sec", "cot"].includes(t)) {
+            consume();
+            let arg = parseExpr();
+            consume();
+            return `${t}(${arg})`;
+          }
+          return t;
+        };
+        const parseFactor = () => {
+          let node = parsePrimary();
+          while (["i", "x", "t"].includes(peek())) {
+            node = `_mul(${node},${consume()})`;
+          }
+          return node;
+        };
+        const parseTerm = () => {
+          let node = parseFactor();
+          while (peek() === "*" || peek() === "/") {
+            let op = consume();
+            let right = parseFactor();
+            node = op === "*" ? `_mul(${node},${right})` : `_div(${node},${right})`;
+          }
+          return node;
+        };
+        const parseExpr = () => {
+          let node = parseTerm();
+          while (peek() === "+" || peek() === "-") {
+            let op = consume();
+            let right = parseTerm();
+            node = op === "+" ? `_add(${node},${right})` : `_sub(${node},${right})`;
+          }
+          return node;
+        };
+        try {
+          return parseExpr();
+        } catch (e) {
+          return formula;
+        }
+      };
+      const transpiledExpr = transpile(processedFormula);
       const functionBody2 = `
-                var { sin, cos, tan, PI, E, pow, sqrt, abs, log } = Math;
+                var _sin = Math.sin, _cos = Math.cos, _tan = Math.tan;
+                var { PI, E, pow, sqrt, abs, log } = Math;
+                
                 var Complex = function(re, im) { this.re = re; this.im = im || 0; };
                 Complex.from = function(v) { 
                     if (v instanceof Complex) return v;
@@ -48,31 +103,21 @@ var _createFormula = (formulaStr, args, options = {}) => {
                     a = Complex.from(a); b = Complex.from(b);
                     return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
                 };
+                Complex.div = function(a, b) {
+                    a = Complex.from(a); b = Complex.from(b);
+                    var d = b.re * b.re + b.im * b.im;
+                    return new Complex((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d);
+                };
+
+                var sin = function(z) { return _sin(z instanceof Complex ? z.re : z); };
+                var cos = function(z) { return _cos(z instanceof Complex ? z.re : z); };
+                var tan = function(z) { return _tan(z instanceof Complex ? z.re : z); };
 
                 var i = new Complex(0, 1);
-                var _add = Complex.add; var _sub = Complex.sub; var _mul = Complex.mul;
+                var _add = Complex.add, _sub = Complex.sub, _mul = Complex.mul, _div = Complex.div;
 
-                // Robust substitution for common patterns
-                let formula = "${processedFormula}"
-                    .replace(/([0-9.x]+)i/g, "(_mul($1, i))")
-                    .replace(/i\\s*\\*\\s*([0-9.x(]+)/g, "_mul(i, $1)")
-                    .replace(/([0-9.x)]+)\\s*\\*\\s*i/g, "_mul($1, i)");
-
-                // Note: Without a full parser, we recommend users use _add(a, b) for complex addition
-                // But we'll try to handle simple a + b where one is complex.
                 try {
-                    // Try to evaluate the formula. If it contains + or - between 
-                    // a number and a Complex object, JS will call .toString().
-                    // So we must ensure our Complex object behaves or we use the helpers.
-                    Complex.prototype.toString = function() { return this.re + (this.im >= 0 ? "+" : "") + this.im + "i"; };
-                    
-                    // For the demo formula, we'll manually help the engine if it looks like the spirograph
-                    let evalStr = formula;
-                    if (formula.includes('cos(x)')) {
-                        evalStr = "_add(_mul(3, _add(cos(x), _mul(i, sin(x)))), _mul(1.5, _sub(cos(4*x), _mul(i, sin(4*x)))))";
-                    }
-
-                    var result = eval(evalStr);
+                    var result = ${transpiledExpr};
                     return Complex.from(result);
                 } catch(e) {
                     return null;
@@ -180,18 +225,24 @@ var _generateComplexPoints = (config) => {
   const midX = width / 2;
   const midY = height / 2;
   const [xMin, xMax] = xRange;
-  const [yMin, yMax] = yRange;
   for (let i = 0; i <= steps; i++) {
     const x = xMin + i / steps * (xMax - xMin);
-    const result = formula(x, t);
-    if (result && typeof result.re === "number" && typeof result.im === "number") {
-      points.push({
-        x: midX + result.re * scale,
-        y: midY - result.im * scale
-      });
+    const rawResult = formula(x, t);
+    let re = 0, im = 0;
+    if (rawResult !== null && typeof rawResult === "object" && "re" in rawResult) {
+      re = rawResult.re;
+      im = rawResult.im || 0;
+    } else if (typeof rawResult === "number" && isFinite(rawResult)) {
+      re = rawResult;
+      im = 0;
     } else {
       points.push(null);
+      continue;
     }
+    points.push({
+      x: midX + re * scale,
+      y: midY - im * scale
+    });
   }
   return points;
 };
