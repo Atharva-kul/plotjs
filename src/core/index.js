@@ -1,7 +1,7 @@
 import { _createFormula } from './math.js';
 import { _generateCartesianPoints, _generatePolarPoints, _generateParametricPoints, _generateComplexPoints } from './generator.js';
 import { _drawGraph } from './drawer.js';
-import { drawAxis, drawGrid, addText } from './enhancer.js';
+import { drawAxis, drawGrid, addText, findRoots } from './enhancer.js';
 
 export function createPlotjs(adapter) {
     const { createCanvas, requestAnimationFrame, cancelAnimationFrame } = adapter;
@@ -16,6 +16,7 @@ export function createPlotjs(adapter) {
         drawAxis,
         drawGrid,
         addText,
+        findRoots,
 
         drawCartesian: (config) => {
             const {
