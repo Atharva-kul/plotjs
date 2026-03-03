@@ -11,7 +11,7 @@ Plotjs is a lightweight, high-performance JavaScript library for drawing mathema
 *   **High-Frequency Support**: Optimized point generation for high-frequency oscillations and detailed "lace" patterns.
 *   **Interactive & Animated**: Built-in animation loop for time-dependent ($t$) functions.
 
-## 📦 Installation
+## 📦 Installation (not supported now. Planned for future)
 
 ```bash
 npm install plotjs
