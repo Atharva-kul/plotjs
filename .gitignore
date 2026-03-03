@@ -14,8 +14,8 @@ dist/
 *.gif
 *.svg
 my-graph.png
-complex-test.png
-complex-test-line.png
+my-graph-1.png
+my-graph-2.png
 
 # Environment & Secrets
 .env
