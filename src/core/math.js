@@ -1,48 +1,29 @@
 export const _createFormula = (formulaStr, args, options = {}) => {
     const isComplex = options.complex === true;
 
-    // Security check
-    const allowedPattern =
-        /^(?:[xti0-9.+\-/*^(),\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E)+$/;
-
+    const allowedPattern = /^(?:[xti0-9.+\-/*^(),\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E)+$/;
     if (!allowedPattern.test(formulaStr)) {
         console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
         return null;
     }
 
-    const transpile = (formula, isComplexMode) => {
+    const transpile = (formula, mode) => {
         const funcNames = ['sin','cos','tan','cosec','sec','cot','pow','sqrt','abs','log'];
-
-        const tokens = formula.match(
-            /sin|cos|tan|cosec|sec|cot|pow|sqrt|abs|log|PI|E|[xti]|\d*\.?\d+|\+|\-|\*|\/|\^|\(|\)|,/g
-        );
-
+        const tokens = formula.match(/sin|cos|tan|cosec|sec|cot|pow|sqrt|abs|log|PI|E|[xti]|\d*\.?\d+|\+|\-|\*|\/|\^|\(|\)|,/g);
         if (!tokens) return formula;
 
         let pos = 0;
         const peek = () => tokens[pos];
         const consume = () => tokens[pos++];
 
-        const isImplicitMulToken = (tok) => {
-            return (
-                tok === '(' ||
-                tok === 'x' ||
-                tok === 't' ||
-                tok === 'i' ||
-                tok === 'PI' ||
-                tok === 'E' ||
-                funcNames.includes(tok)
-            );
-        };
-
         const parseExpression = () => {
             let node = parseTerm();
             while (peek() === '+' || peek() === '-') {
                 const op = consume();
                 const right = parseTerm();
-                node = isComplexMode
-                    ? (op === '+' ? `_add(${node},${right})` : `_sub(${node},${right})`)
-                    : `(${node}${op}${right})`;
+                if (mode === 'glsl-complex') node = op === '+' ? `c_add(${node}, ${right})` : `c_sub(${node}, ${right})`;
+                else if (mode === 'complex') node = op === '+' ? `_add(${node}, ${right})` : `_sub(${node}, ${right})`;
+                else node = `(${node}${op}${right})`;
             }
             return node;
         };
@@ -52,24 +33,21 @@ export const _createFormula = (formulaStr, args, options = {}) => {
             while (peek() === '*' || peek() === '/') {
                 const op = consume();
                 const right = parseFactor();
-                node = isComplexMode
-                    ? (op === '*' ? `_mul(${node},${right})` : `_div(${node},${right})`)
-                    : `(${node}${op}${right})`;
+                if (mode === 'glsl-complex') node = op === '*' ? `c_mul(${node}, ${right})` : `c_div(${node}, ${right})`;
+                else if (mode === 'complex') node = op === '*' ? `_mul(${node}, ${right})` : `_div(${node}, ${right})`;
+                else node = `(${node}${op}${right})`;
             }
             return node;
         };
 
         const parseFactor = () => {
             let node = parsePower();
-
-            // Controlled implicit multiplication
-            while (pos < tokens.length && isImplicitMulToken(peek())) {
+            while (pos < tokens.length && ['(','x','t','i','PI','E','sin','cos','tan','pow','sqrt','log'].includes(peek())) {
                 const right = parsePower();
-                node = isComplexMode
-                    ? `_mul(${node},${right})`
-                    : `(${node}*${right})`;
+                if (mode === 'glsl-complex') node = `c_mul(${node}, ${right})`;
+                else if (mode === 'complex') node = `_mul(${node}, ${right})`;
+                else node = `(${node}*${right})`;
             }
-
             return node;
         };
 
@@ -77,156 +55,84 @@ export const _createFormula = (formulaStr, args, options = {}) => {
             let node = parseUnary();
             while (peek() === '^') {
                 consume();
-                const right = parsePower(); // right associative
-                node = isComplexMode
-                    ? `_pow(${node},${right})`
-                    : `pow(${node},${right})`;
+                const right = parsePower();
+                if (mode === 'glsl-complex') node = `c_pow(${node}, ${right})`;
+                else if (mode === 'complex') node = `_pow(${node}, ${right})`;
+                else node = `pow(${node}, ${right})`;
             }
             return node;
         };
 
         const parseUnary = () => {
-            if (peek() === '-') {
-                consume();
-                const operand = parseUnary();
-                return isComplexMode
-                    ? `_mul(-1,${operand})`
-                    : `(-${operand})`;
+            if (peek() === '-') { 
+                consume(); 
+                const op = parseUnary();
+                if (mode === 'glsl-complex') return `c_mul(vec2(-1.0,0.0), ${op})`;
+                if (mode === 'complex') return `_mul(-1, ${op})`;
+                return `(-${op})`;
             }
             return parsePrimary();
         };
 
         const parsePrimary = () => {
             const t = consume();
-
-            if (t === '(') {
-                const expr = parseExpression();
-                consume(); // ')'
-                return `(${expr})`;
-            }
-
+            if (t === '(') { const e = parseExpression(); consume(); return `(${e})`; }
             if (funcNames.includes(t)) {
-                consume(); // '('
+                consume();
                 const argsList = [];
                 argsList.push(parseExpression());
-                while (peek() === ',') {
-                    consume();
-                    argsList.push(parseExpression());
-                }
-                consume(); // ')'
-                return isComplexMode
-                    ? `_${t}(${argsList.join(',')})`
-                    : `${t}(${argsList.join(',')})`;
+                while (peek() === ',') { consume(); argsList.push(parseExpression()); }
+                consume();
+                if (mode === 'glsl-complex') return `c_${t}(${argsList.join(',')})`;
+                if (mode === 'complex') return `_${t}(${argsList.join(',')})`;
+                return `${t}(${argsList.join(',')})`;
             }
-
-            if (t === 'PI' || t === 'E') {
-                return isComplexMode ? `Math.${t}` : t;
+            if (t === 'PI') return mode === 'glsl-complex' ? 'vec2(3.14159265, 0.0)' : 'Math.PI';
+            if (t === 'E') return mode === 'glsl-complex' ? 'vec2(2.71828182, 0.0)' : 'Math.E';
+            if (t === 'i' && mode === 'glsl-complex') return 'vec2(0.0, 1.0)';
+            if (t === 'x' && mode === 'glsl-complex') return 'vec2(x, 0.0)';
+            if (t === 't' && mode === 'glsl-complex') return 'vec2(t, 0.0)';
+            if (/^\d/.test(t) && mode === 'glsl-complex') {
+                const val = t.includes('.') ? t : t + '.0';
+                return `vec2(${val}, 0.0)`;
             }
-
-            return t; // numbers, x, t, i
+            return t;
         };
 
         return parseExpression();
     };
 
+    if (options.glsl) {
+        return transpile(formulaStr, isComplex ? 'glsl-complex' : 'glsl-real');
+    }
+
     try {
         if (isComplex) {
-            const transpiledExpr = transpile(formulaStr, true);
-            const complexArgsSetup = args
-                .map((arg, idx) => `var ${arg} = Complex.from(arguments[${idx}]);`)
-                .join(' ');
-
+            const transpiledExpr = transpile(formulaStr, 'complex');
+            const complexArgsSetup = args.map((arg, idx) => `var ${arg} = Complex.from(arguments[${idx}]);`).join(' ');
             const functionBody = `
-                var Complex = function(re, im) { this.re = re; this.im = im || 0; };
-                Complex.from = function(v) {
-                    if (v instanceof Complex) return v;
-                    if (typeof v === 'number') return new Complex(v, 0);
-                    return new Complex(0, 0);
-                };
-
-                Complex.add = function(a,b){ a=Complex.from(a); b=Complex.from(b); return new Complex(a.re+b.re,a.im+b.im); };
-                Complex.sub = function(a,b){ a=Complex.from(a); b=Complex.from(b); return new Complex(a.re-b.re,a.im-b.im); };
-                Complex.mul = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    return new Complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re);
-                };
-                Complex.div = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    var d = b.re*b.re + b.im*b.im;
-                    if(d===0) return new Complex(NaN,NaN);
-                    return new Complex(
-                        (a.re*b.re + a.im*b.im)/d,
-                        (a.im*b.re - a.re*b.im)/d
-                    );
-                };
-
-                Complex.exp = function(z){
-                    z=Complex.from(z);
-                    var r = Math.exp(z.re);
-                    return new Complex(r*Math.cos(z.im), r*Math.sin(z.im));
-                };
-
-                Complex.log = function(z){
-                    z=Complex.from(z);
-                    return new Complex(
-                        Math.log(Math.sqrt(z.re*z.re + z.im*z.im)),
-                        Math.atan2(z.im,z.re)
-                    );
-                };
-
-                Complex.pow = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    if(a.re===0 && a.im===0) return new Complex(0,0);
-                    return Complex.exp(Complex.mul(b, Complex.log(a)));
-                };
-
-                var _add=Complex.add,_sub=Complex.sub,_mul=Complex.mul,_div=Complex.div,_pow=Complex.pow;
-
-                var _sin = (z)=>{ z=Complex.from(z); return new Complex(Math.sin(z.re)*Math.cosh(z.im), Math.cos(z.re)*Math.sinh(z.im)); };
-                var _cos = (z)=>{ z=Complex.from(z); return new Complex(Math.cos(z.re)*Math.cosh(z.im), -Math.sin(z.re)*Math.sinh(z.im)); };
-                var _tan = (z)=>_div(_sin(z),_cos(z));
-                var _sqrt=(z)=>{
-                    z=Complex.from(z);
-                    var r=Math.sqrt(z.re*z.re+z.im*z.im);
-                    var re=Math.sqrt((r+z.re)/2);
-                    var im=Math.sqrt((r-z.re)/2)*(z.im<0?-1:1);
-                    return new Complex(re,im);
-                };
-                var _abs=(z)=>{ z=Complex.from(z); return new Complex(Math.sqrt(z.re*z.re+z.im*z.im),0); };
-                var _log=Complex.log;
-                var _sec=(z)=>_div(new Complex(1,0),_cos(z));
-                var _cot=(z)=>_div(new Complex(1,0),_tan(z));
-                var _cosec=(z)=>_div(new Complex(1,0),_sin(z));
-
-                var i=new Complex(0,1);
-                var PI=Math.PI,E=Math.E;
+                var m_sin=Math.sin, m_cos=Math.cos, m_cosh=Math.cosh, m_sinh=Math.sinh;
+                var {PI,E,pow:m_pow,sqrt:m_sqrt,abs:m_abs,log:m_log,atan2:m_atan2,exp:m_exp}=Math;
+                function Complex(re, im){this.re=re;this.im=im||0;};
+                Complex.from=function(v){if(v&&typeof v.re==='number')return v;return new Complex(v||0,0);};
+                var _add=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re+b.re,a.im+b.im);};
+                var _sub=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re-b.re,a.im-b.im);};
+                var _mul=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re*b.re-a.im*b.im,a.re*b.im+a.im*b.re);};
+                var _div=(a,b)=>{a=Complex.from(a);b=Complex.from(b);var d=b.re*b.re+b.im*b.im;return d===0?new Complex(NaN,NaN):new Complex((a.re*b.re+a.im*b.im)/d,(a.im*b.re-a.re*b.im)/d);};
+                var _pow=(a,b)=>{a=Complex.from(a);b=Complex.from(b);if(a.re===0&&a.im===0)return new Complex(0,0);var mag=m_sqrt(a.re*a.re+a.im*a.im),arg=m_atan2(a.im,a.re),l_re=m_log(mag),m_re=b.re*l_re-b.im*arg,m_im=b.re*arg+b.im*l_re,r=m_exp(m_re);return new Complex(r*m_cos(m_im),r*m_sin(m_im));};
+                var _sin_c=(z)=>{z=Complex.from(z);return new Complex(m_sin(z.re)*m_cosh(z.im),m_cos(z.re)*m_sinh(z.im));};
+                var _cos_c=(z)=>{z=Complex.from(z);return new Complex(m_cos(z.re)*m_cosh(z.im),-m_sin(z.re)*m_sinh(z.im));};
+                var _tan_c=(z)=>_div(_sin_c(z),_cos_c(z));
+                var _sqrt_c=(z)=>{z=Complex.from(z);var r=m_sqrt(z.re*z.re+z.im*z.im);return new Complex(m_sqrt((r+z.re)/2),m_sqrt((r-z.re)/2)*(z.im<0?-1:1));};
+                var _sin=_sin_c,_cos=_cos_c,_tan=_tan_c,_sec=(z)=>_div(new Complex(1,0),_cos_c(z)),_cot=(z)=>_div(new Complex(1,0),_tan_c(z)),_cosec=(z)=>_div(new Complex(1,0),_sin_c(z)),_sqrt=_sqrt_c,_abs=(z)=>{z=Complex.from(z);return new Complex(m_sqrt(z.re*z.re+z.im*z.im),0);},_log=(z)=>{z=Complex.from(z);return new Complex(m_log(m_sqrt(z.re*z.re+z.im*z.im)),m_atan2(z.im,z.re));};
+                var sin=_sin,cos=_cos,tan=_tan,sec=_sec,cot=_cot,cosec=_cosec,sqrt=_sqrt,abs=_abs,log=_log,i=new Complex(0,1);
                 ${complexArgsSetup}
-
-                try{
-                    return Complex.from(${transpiledExpr});
-                }catch(e){
-                    return null;
-                }
+                try { return Complex.from(${transpiledExpr}); } catch(e) { return null; }
             `;
-
             return new Function(...args, functionBody);
         }
-
-        const transpiledExpr = transpile(formulaStr, false);
-
-        const functionBody = `
-            const {sin,cos,tan,PI,E,pow,sqrt,abs,log}=Math;
-            const sec=(a)=>1/cos(a);
-            const cot=(a)=>1/tan(a);
-            const cosec=(a)=>1/sin(a);
-            const result=${transpiledExpr};
-            return Number.isFinite(result)?result:null;
-        `;
-
+        const transpiledExpr = transpile(formulaStr, 'real');
+        const functionBody = `const {sin,cos,tan,PI,E,pow,sqrt,abs,log}=Math;const sec=(a)=>1/cos(a),cot=(a)=>1/tan(a),cosec=(a)=>1/sin(a),result=${transpiledExpr};return Number.isFinite(result)?result:null;`;
         return new Function(...args, functionBody);
-
-    } catch (error) {
-        console.error(`Plotjs Error: The formula "${formulaStr}" is invalid.`);
-        return null;
-    }
+    } catch (e) { return null; }
 };

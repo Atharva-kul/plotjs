@@ -6,24 +6,21 @@ var _createFormula = (formulaStr, args, options = {}) => {
     console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
     return null;
   }
-  const transpile = (formula, isComplexMode) => {
+  const transpile = (formula, mode) => {
     const funcNames = ["sin", "cos", "tan", "cosec", "sec", "cot", "pow", "sqrt", "abs", "log"];
-    const tokens = formula.match(
-      /sin|cos|tan|cosec|sec|cot|pow|sqrt|abs|log|PI|E|[xti]|\d*\.?\d+|\+|\-|\*|\/|\^|\(|\)|,/g
-    );
+    const tokens = formula.match(/sin|cos|tan|cosec|sec|cot|pow|sqrt|abs|log|PI|E|[xti]|\d*\.?\d+|\+|\-|\*|\/|\^|\(|\)|,/g);
     if (!tokens) return formula;
     let pos = 0;
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
-    const isImplicitMulToken = (tok) => {
-      return tok === "(" || tok === "x" || tok === "t" || tok === "i" || tok === "PI" || tok === "E" || funcNames.includes(tok);
-    };
     const parseExpression = () => {
       let node = parseTerm();
       while (peek() === "+" || peek() === "-") {
         const op = consume();
         const right = parseTerm();
-        node = isComplexMode ? op === "+" ? `_add(${node},${right})` : `_sub(${node},${right})` : `(${node}${op}${right})`;
+        if (mode === "glsl-complex") node = op === "+" ? `c_add(${node}, ${right})` : `c_sub(${node}, ${right})`;
+        else if (mode === "complex") node = op === "+" ? `_add(${node}, ${right})` : `_sub(${node}, ${right})`;
+        else node = `(${node}${op}${right})`;
       }
       return node;
     };
@@ -32,15 +29,19 @@ var _createFormula = (formulaStr, args, options = {}) => {
       while (peek() === "*" || peek() === "/") {
         const op = consume();
         const right = parseFactor();
-        node = isComplexMode ? op === "*" ? `_mul(${node},${right})` : `_div(${node},${right})` : `(${node}${op}${right})`;
+        if (mode === "glsl-complex") node = op === "*" ? `c_mul(${node}, ${right})` : `c_div(${node}, ${right})`;
+        else if (mode === "complex") node = op === "*" ? `_mul(${node}, ${right})` : `_div(${node}, ${right})`;
+        else node = `(${node}${op}${right})`;
       }
       return node;
     };
     const parseFactor = () => {
       let node = parsePower();
-      while (pos < tokens.length && isImplicitMulToken(peek())) {
+      while (pos < tokens.length && ["(", "x", "t", "i", "PI", "E", "sin", "cos", "tan", "pow", "sqrt", "log"].includes(peek())) {
         const right = parsePower();
-        node = isComplexMode ? `_mul(${node},${right})` : `(${node}*${right})`;
+        if (mode === "glsl-complex") node = `c_mul(${node}, ${right})`;
+        else if (mode === "complex") node = `_mul(${node}, ${right})`;
+        else node = `(${node}*${right})`;
       }
       return node;
     };
@@ -49,24 +50,28 @@ var _createFormula = (formulaStr, args, options = {}) => {
       while (peek() === "^") {
         consume();
         const right = parsePower();
-        node = isComplexMode ? `_pow(${node},${right})` : `pow(${node},${right})`;
+        if (mode === "glsl-complex") node = `c_pow(${node}, ${right})`;
+        else if (mode === "complex") node = `_pow(${node}, ${right})`;
+        else node = `pow(${node}, ${right})`;
       }
       return node;
     };
     const parseUnary = () => {
       if (peek() === "-") {
         consume();
-        const operand = parseUnary();
-        return isComplexMode ? `_mul(-1,${operand})` : `(-${operand})`;
+        const op = parseUnary();
+        if (mode === "glsl-complex") return `c_mul(vec2(-1.0,0.0), ${op})`;
+        if (mode === "complex") return `_mul(-1, ${op})`;
+        return `(-${op})`;
       }
       return parsePrimary();
     };
     const parsePrimary = () => {
       const t = consume();
       if (t === "(") {
-        const expr = parseExpression();
+        const e = parseExpression();
         consume();
-        return `(${expr})`;
+        return `(${e})`;
       }
       if (funcNames.includes(t)) {
         consume();
@@ -77,243 +82,336 @@ var _createFormula = (formulaStr, args, options = {}) => {
           argsList.push(parseExpression());
         }
         consume();
-        return isComplexMode ? `_${t}(${argsList.join(",")})` : `${t}(${argsList.join(",")})`;
+        if (mode === "glsl-complex") return `c_${t}(${argsList.join(",")})`;
+        if (mode === "complex") return `_${t}(${argsList.join(",")})`;
+        return `${t}(${argsList.join(",")})`;
       }
-      if (t === "PI" || t === "E") {
-        return isComplexMode ? `Math.${t}` : t;
+      if (t === "PI") return mode === "glsl-complex" ? "vec2(3.14159265, 0.0)" : "Math.PI";
+      if (t === "E") return mode === "glsl-complex" ? "vec2(2.71828182, 0.0)" : "Math.E";
+      if (t === "i" && mode === "glsl-complex") return "vec2(0.0, 1.0)";
+      if (t === "x" && mode === "glsl-complex") return "vec2(x, 0.0)";
+      if (t === "t" && mode === "glsl-complex") return "vec2(t, 0.0)";
+      if (/^\d/.test(t) && mode === "glsl-complex") {
+        const val = t.includes(".") ? t : t + ".0";
+        return `vec2(${val}, 0.0)`;
       }
       return t;
     };
     return parseExpression();
   };
+  if (options.glsl) {
+    return transpile(formulaStr, isComplex ? "glsl-complex" : "glsl-real");
+  }
   try {
     if (isComplex) {
-      const transpiledExpr2 = transpile(formulaStr, true);
+      const transpiledExpr2 = transpile(formulaStr, "complex");
       const complexArgsSetup = args.map((arg, idx) => `var ${arg} = Complex.from(arguments[${idx}]);`).join(" ");
       const functionBody2 = `
-                var Complex = function(re, im) { this.re = re; this.im = im || 0; };
-                Complex.from = function(v) {
-                    if (v instanceof Complex) return v;
-                    if (typeof v === 'number') return new Complex(v, 0);
-                    return new Complex(0, 0);
-                };
-
-                Complex.add = function(a,b){ a=Complex.from(a); b=Complex.from(b); return new Complex(a.re+b.re,a.im+b.im); };
-                Complex.sub = function(a,b){ a=Complex.from(a); b=Complex.from(b); return new Complex(a.re-b.re,a.im-b.im); };
-                Complex.mul = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    return new Complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re);
-                };
-                Complex.div = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    var d = b.re*b.re + b.im*b.im;
-                    if(d===0) return new Complex(NaN,NaN);
-                    return new Complex(
-                        (a.re*b.re + a.im*b.im)/d,
-                        (a.im*b.re - a.re*b.im)/d
-                    );
-                };
-
-                Complex.exp = function(z){
-                    z=Complex.from(z);
-                    var r = Math.exp(z.re);
-                    return new Complex(r*Math.cos(z.im), r*Math.sin(z.im));
-                };
-
-                Complex.log = function(z){
-                    z=Complex.from(z);
-                    return new Complex(
-                        Math.log(Math.sqrt(z.re*z.re + z.im*z.im)),
-                        Math.atan2(z.im,z.re)
-                    );
-                };
-
-                Complex.pow = function(a,b){
-                    a=Complex.from(a); b=Complex.from(b);
-                    if(a.re===0 && a.im===0) return new Complex(0,0);
-                    return Complex.exp(Complex.mul(b, Complex.log(a)));
-                };
-
-                var _add=Complex.add,_sub=Complex.sub,_mul=Complex.mul,_div=Complex.div,_pow=Complex.pow;
-
-                var _sin = (z)=>{ z=Complex.from(z); return new Complex(Math.sin(z.re)*Math.cosh(z.im), Math.cos(z.re)*Math.sinh(z.im)); };
-                var _cos = (z)=>{ z=Complex.from(z); return new Complex(Math.cos(z.re)*Math.cosh(z.im), -Math.sin(z.re)*Math.sinh(z.im)); };
-                var _tan = (z)=>_div(_sin(z),_cos(z));
-                var _sqrt=(z)=>{
-                    z=Complex.from(z);
-                    var r=Math.sqrt(z.re*z.re+z.im*z.im);
-                    var re=Math.sqrt((r+z.re)/2);
-                    var im=Math.sqrt((r-z.re)/2)*(z.im<0?-1:1);
-                    return new Complex(re,im);
-                };
-                var _abs=(z)=>{ z=Complex.from(z); return new Complex(Math.sqrt(z.re*z.re+z.im*z.im),0); };
-                var _log=Complex.log;
-                var _sec=(z)=>_div(new Complex(1,0),_cos(z));
-                var _cot=(z)=>_div(new Complex(1,0),_tan(z));
-                var _cosec=(z)=>_div(new Complex(1,0),_sin(z));
-
-                var i=new Complex(0,1);
-                var PI=Math.PI,E=Math.E;
+                var m_sin=Math.sin, m_cos=Math.cos, m_cosh=Math.cosh, m_sinh=Math.sinh;
+                var {PI,E,pow:m_pow,sqrt:m_sqrt,abs:m_abs,log:m_log,atan2:m_atan2,exp:m_exp}=Math;
+                function Complex(re, im){this.re=re;this.im=im||0;};
+                Complex.from=function(v){if(v&&typeof v.re==='number')return v;return new Complex(v||0,0);};
+                var _add=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re+b.re,a.im+b.im);};
+                var _sub=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re-b.re,a.im-b.im);};
+                var _mul=(a,b)=>{a=Complex.from(a);b=Complex.from(b);return new Complex(a.re*b.re-a.im*b.im,a.re*b.im+a.im*b.re);};
+                var _div=(a,b)=>{a=Complex.from(a);b=Complex.from(b);var d=b.re*b.re+b.im*b.im;return d===0?new Complex(NaN,NaN):new Complex((a.re*b.re+a.im*b.im)/d,(a.im*b.re-a.re*b.im)/d);};
+                var _pow=(a,b)=>{a=Complex.from(a);b=Complex.from(b);if(a.re===0&&a.im===0)return new Complex(0,0);var mag=m_sqrt(a.re*a.re+a.im*a.im),arg=m_atan2(a.im,a.re),l_re=m_log(mag),m_re=b.re*l_re-b.im*arg,m_im=b.re*arg+b.im*l_re,r=m_exp(m_re);return new Complex(r*m_cos(m_im),r*m_sin(m_im));};
+                var _sin_c=(z)=>{z=Complex.from(z);return new Complex(m_sin(z.re)*m_cosh(z.im),m_cos(z.re)*m_sinh(z.im));};
+                var _cos_c=(z)=>{z=Complex.from(z);return new Complex(m_cos(z.re)*m_cosh(z.im),-m_sin(z.re)*m_sinh(z.im));};
+                var _tan_c=(z)=>_div(_sin_c(z),_cos_c(z));
+                var _sqrt_c=(z)=>{z=Complex.from(z);var r=m_sqrt(z.re*z.re+z.im*z.im);return new Complex(m_sqrt((r+z.re)/2),m_sqrt((r-z.re)/2)*(z.im<0?-1:1));};
+                var _sin=_sin_c,_cos=_cos_c,_tan=_tan_c,_sec=(z)=>_div(new Complex(1,0),_cos_c(z)),_cot=(z)=>_div(new Complex(1,0),_tan_c(z)),_cosec=(z)=>_div(new Complex(1,0),_sin_c(z)),_sqrt=_sqrt_c,_abs=(z)=>{z=Complex.from(z);return new Complex(m_sqrt(z.re*z.re+z.im*z.im),0);},_log=(z)=>{z=Complex.from(z);return new Complex(m_log(m_sqrt(z.re*z.re+z.im*z.im)),m_atan2(z.im,z.re));};
+                var sin=_sin,cos=_cos,tan=_tan,sec=_sec,cot=_cot,cosec=_cosec,sqrt=_sqrt,abs=_abs,log=_log,i=new Complex(0,1);
                 ${complexArgsSetup}
-
-                try{
-                    return Complex.from(${transpiledExpr2});
-                }catch(e){
-                    return null;
-                }
+                try { return Complex.from(${transpiledExpr2}); } catch(e) { return null; }
             `;
       return new Function(...args, functionBody2);
     }
-    const transpiledExpr = transpile(formulaStr, false);
-    const functionBody = `
-            const {sin,cos,tan,PI,E,pow,sqrt,abs,log}=Math;
-            const sec=(a)=>1/cos(a);
-            const cot=(a)=>1/tan(a);
-            const cosec=(a)=>1/sin(a);
-            const result=${transpiledExpr};
-            return Number.isFinite(result)?result:null;
-        `;
+    const transpiledExpr = transpile(formulaStr, "real");
+    const functionBody = `const {sin,cos,tan,PI,E,pow,sqrt,abs,log}=Math;const sec=(a)=>1/cos(a),cot=(a)=>1/tan(a),cosec=(a)=>1/sin(a),result=${transpiledExpr};return Number.isFinite(result)?result:null;`;
     return new Function(...args, functionBody);
-  } catch (error) {
-    console.error(`Plotjs Error: The formula "${formulaStr}" is invalid.`);
+  } catch (e) {
     return null;
   }
 };
 
 // src/core/generator.js
 var _generateCartesianPoints = (config) => {
-  const { formula, width, height, scale = 50, xRange, yRange, t = 0 } = config;
-  const points = [];
+  const { formula, width, height, scale = 50, xRange, t = 0, steps, flat = false, buffer = null } = config;
+  const numSteps = steps || width;
   const midX = width / 2;
   const midY = height / 2;
+  if (flat) {
+    const points2 = buffer || new Float32Array((numSteps + 1) * 2);
+    for (let i = 0; i <= numSteps; i++) {
+      const px = i / numSteps * width;
+      const x = xRange ? xRange[0] + i / numSteps * (xRange[1] - xRange[0]) : (px - midX) / scale;
+      const y = formula(x, t);
+      points2[i * 2] = px;
+      points2[i * 2 + 1] = y !== null && isFinite(y) ? midY - y * scale : NaN;
+    }
+    return points2;
+  }
+  const points = [];
   for (let px = 0; px <= width; px++) {
-    let x;
-    if (xRange) {
-      const [minX, maxX] = xRange;
-      x = minX + px / width * (maxX - minX);
-    } else {
-      x = (px - midX) / scale;
-    }
-    let y = formula(x, t);
-    if (y !== null && Number.isFinite(y)) {
-      let py;
-      if (yRange) {
-        const [minY, maxY] = yRange;
-        py = height - (y - minY) / (maxY - minY) * height;
-      } else {
-        py = midY - y * scale;
-      }
-      points.push({ x: px, y: py });
-    } else {
-      points.push(null);
-    }
+    const x = xRange ? xRange[0] + px / width * (xRange[1] - xRange[0]) : (px - midX) / scale;
+    const y = formula(x, t);
+    points.push(y !== null && isFinite(y) ? { x: px, y: midY - y * scale } : null);
   }
   return points;
 };
 var _generatePolarPoints = (config) => {
-  const { formula, width, height, scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0 } = config;
-  const points = [];
+  const { formula, width, height, scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0, flat = false, buffer = null } = config;
   const midX = width / 2;
   const midY = height / 2;
   const [tMin, tMax] = tRange;
-  for (let i = 0; i <= steps; i++) {
-    let theta = tMin + i / steps * (tMax - tMin);
-    let r = formula(theta, t);
-    if (r !== null && Number.isFinite(r)) {
-      let x = r * Math.cos(theta) * scale + midX;
-      let y = midY - r * Math.sin(theta) * scale;
-      points.push({ x, y });
-    } else {
-      points.push(null);
+  if (flat) {
+    const points2 = buffer || new Float32Array((steps + 1) * 2);
+    for (let i = 0; i <= steps; i++) {
+      const theta = tMin + i / steps * (tMax - tMin);
+      const r = formula(theta, t);
+      if (r !== null && isFinite(r)) {
+        points2[i * 2] = r * Math.cos(theta) * scale + midX;
+        points2[i * 2 + 1] = midY - r * Math.sin(theta) * scale;
+      } else {
+        points2[i * 2] = points2[i * 2 + 1] = NaN;
+      }
     }
+    return points2;
+  }
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const theta = tMin + i / steps * (tMax - tMin);
+    const r = formula(theta, t);
+    points.push(r !== null && isFinite(r) ? { x: r * Math.cos(theta) * scale + midX, y: midY - r * Math.sin(theta) * scale } : null);
   }
   return points;
 };
 var _generateParametricPoints = (config) => {
-  const { fX, fY, width, height, scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0 } = config;
-  const points = [];
+  const { fX, fY, width, height, scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0, flat = false, buffer = null } = config;
   const midX = width / 2;
   const midY = height / 2;
   const [tMin, tMax] = tRange;
+  if (flat) {
+    const points2 = buffer || new Float32Array((steps + 1) * 2);
+    for (let i = 0; i <= steps; i++) {
+      const u = tMin + i / steps * (tMax - tMin);
+      const vx = fX(u, t), vy = fY(u, t);
+      if (vx !== null && vy !== null && isFinite(vx) && isFinite(vy)) {
+        points2[i * 2] = midX + vx * scale;
+        points2[i * 2 + 1] = midY - vy * scale;
+      } else {
+        points2[i * 2] = points2[i * 2 + 1] = NaN;
+      }
+    }
+    return points2;
+  }
+  const points = [];
   for (let i = 0; i <= steps; i++) {
     const u = tMin + i / steps * (tMax - tMin);
-    const xVal = fX(u, t);
-    const yVal = fY(u, t);
-    if (xVal !== null && yVal !== null && Number.isFinite(xVal) && Number.isFinite(yVal)) {
-      points.push({
-        x: midX + xVal * scale,
-        y: midY - yVal * scale
-      });
-    } else {
-      points.push(null);
-    }
+    const vx = fX(u, t), vy = fY(u, t);
+    points.push(vx !== null && vy !== null && isFinite(vx) && isFinite(vy) ? { x: midX + vx * scale, y: midY - vy * scale } : null);
   }
   return points;
 };
 var _generateComplexPoints = (config) => {
-  const {
-    formula,
-    width,
-    height,
-    scale = 50,
-    xRange = [-10, 10],
-    yRange = [-10, 10],
-    t = 0,
-    steps = 1e3
-  } = config;
-  const points = [];
+  const { formula, width, height, scale = 50, xRange = [-10, 10], steps = 1e3, t = 0, flat = false, buffer = null } = config;
   const midX = width / 2;
   const midY = height / 2;
   const [xMin, xMax] = xRange;
+  if (flat) {
+    const points2 = buffer || new Float32Array((steps + 1) * 2);
+    for (let i = 0; i <= steps; i++) {
+      const x = xMin + i / steps * (xMax - xMin);
+      const res = formula(x, t);
+      if (res && typeof res.re === "number") {
+        points2[i * 2] = midX + res.re * scale;
+        points2[i * 2 + 1] = midY - res.im * scale;
+      } else if (typeof res === "number" && isFinite(res)) {
+        points2[i * 2] = midX + res * scale;
+        points2[i * 2 + 1] = midY;
+      } else {
+        points2[i * 2] = points2[i * 2 + 1] = NaN;
+      }
+    }
+    return points2;
+  }
+  const points = [];
   for (let i = 0; i <= steps; i++) {
     const x = xMin + i / steps * (xMax - xMin);
-    const rawResult = formula(x, t);
-    let re = 0, im = 0;
-    if (rawResult !== null && typeof rawResult === "object" && "re" in rawResult) {
-      re = rawResult.re;
-      im = rawResult.im || 0;
-    } else if (typeof rawResult === "number" && isFinite(rawResult)) {
-      re = rawResult;
-      im = 0;
+    const res = formula(x, t);
+    if (res && typeof res.re === "number") {
+      points.push({ x: midX + res.re * scale, y: midY - res.im * scale });
+    } else if (typeof res === "number" && isFinite(res)) {
+      points.push({ x: midX + res * scale, y: midY });
     } else {
       points.push(null);
-      continue;
     }
-    points.push({
-      x: midX + re * scale,
-      y: midY - im * scale
-    });
   }
   return points;
 };
 
 // src/core/drawer.js
-var _drawGraph = (points, ctx, config) => {
-  const { lineColor = "white", lineWidth = 2 } = config;
+var glCache = /* @__PURE__ */ new Map();
+var _drawGraph = (points, ctx, options = {}) => {
+  if (!points || points.length === 0) return;
+  const { lineColor = "white", lineWidth = 2 } = options;
   ctx.strokeStyle = lineColor;
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
-  let currentSegment = [];
-  for (const point of points) {
-    if (point) {
-      currentSegment.push(point);
-    } else {
-      if (currentSegment.length > 1) {
-        currentSegment.forEach((p, i) => {
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        });
+  if (points instanceof Float32Array) {
+    for (let i = 0; i < points.length; i += 2) {
+      const px = points[i], py = points[i + 1];
+      if (isNaN(px)) continue;
+      if (i === 0 || isNaN(points[i - 2])) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+  } else {
+    let started = false;
+    for (const p of points) {
+      if (p) {
+        if (!started) {
+          ctx.moveTo(p.x, p.y);
+          started = true;
+        } else ctx.lineTo(p.x, p.y);
+      } else {
+        started = false;
       }
-      currentSegment = [];
     }
   }
-  if (currentSegment.length > 1) {
-    currentSegment.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    });
-  }
   ctx.stroke();
+};
+var _drawGraphWebGL = (points, canvas, options = {}) => {
+  const gl = canvas.getContext("webgl", { antialias: true, powerPreference: "high-performance" });
+  if (!gl) return;
+  const { lineColor = "white", lineWidth = 2 } = options;
+  let hex = lineColor.replace("#", "");
+  let rgb = [parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255];
+  let ctxCache = glCache.get(gl);
+  if (!ctxCache) {
+    ctxCache = { programs: /* @__PURE__ */ new Map(), buffers: /* @__PURE__ */ new Map() };
+    glCache.set(gl, ctxCache);
+  }
+  let buffer = ctxCache.buffers.get("line_buffer");
+  if (!buffer) {
+    buffer = gl.createBuffer();
+    ctxCache.buffers.set("line_buffer", buffer);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, points, gl.DYNAMIC_DRAW);
+  let pInfo = ctxCache.programs.get("basic_line");
+  if (!pInfo) {
+    const vs = `attribute vec2 a; uniform vec2 r,o; void main(){gl_Position=vec4(((a+o)/r*2.0-1.0)*vec2(1,-1),0,1);}`;
+    const fs = `precision lowp float; uniform vec4 c; void main(){gl_FragColor=c;}`;
+    const create = (t, s) => {
+      const sh = gl.createShader(t);
+      gl.shaderSource(sh, s);
+      gl.compileShader(sh);
+      return sh;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, create(gl.VERTEX_SHADER, vs));
+    gl.attachShader(prog, create(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(prog);
+    pInfo = { prog, a: gl.getAttribLocation(prog, "a"), r: gl.getUniformLocation(prog, "r"), c: gl.getUniformLocation(prog, "c"), o: gl.getUniformLocation(prog, "o") };
+    ctxCache.programs.set("basic_line", pInfo);
+  }
+  gl.useProgram(pInfo.prog);
+  gl.enableVertexAttribArray(pInfo.a);
+  gl.vertexAttribPointer(pInfo.a, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform2f(pInfo.r, canvas.width, canvas.height);
+  gl.uniform4f(pInfo.c, rgb[0], rgb[1], rgb[2], 1);
+  const passes = Math.min(lineWidth, 3);
+  for (let i = 0; i < passes; i++) {
+    gl.uniform2f(pInfo.o, (i - 1) * 0.5, (i - 1) * 0.5);
+    gl.drawArrays(gl.LINE_STRIP, 0, points.length / 2);
+  }
+};
+var _drawGraphGPUEvaluated = (glConfig, canvas, options = {}) => {
+  const gl = canvas.getContext("webgl", { antialias: true, powerPreference: "high-performance" });
+  if (!gl) return;
+  const { formulaGLSL, t, steps = 1e3, scale = 50, lineColor = "white" } = glConfig;
+  let ctxCache = glCache.get(gl);
+  if (!ctxCache) {
+    ctxCache = { programs: /* @__PURE__ */ new Map(), buffers: /* @__PURE__ */ new Map() };
+    glCache.set(gl, ctxCache);
+  }
+  const glslLib = `
+        precision highp float;
+        float sinh(float x) { return (exp(x) - exp(-x)) * 0.5; }
+        float cosh(float x) { return (exp(x) + exp(-x)) * 0.5; }
+        vec2 c_add(vec2 a, vec2 b) { return a + b; }
+        vec2 c_sub(vec2 a, vec2 b) { return a - b; }
+        vec2 c_mul(vec2 a, vec2 b) { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+        vec2 c_div(vec2 a, vec2 b) { float d = dot(b, b); return vec2(dot(a, b), a.y*b.x - a.x*b.y) / d; }
+        vec2 c_exp(vec2 z) { return exp(z.x) * vec2(cos(z.y), sin(z.y)); }
+        vec2 c_sin(vec2 z) { return vec2(sin(z.x) * cosh(z.y), cos(z.x) * sinh(z.y)); }
+        vec2 c_cos(vec2 z) { return vec2(cos(z.x) * cosh(z.y), -sin(z.x) * sinh(z.y)); }
+        vec2 c_log(vec2 z) { return vec2(log(length(z)), atan(z.y, z.x)); }
+        vec2 c_pow(vec2 a, vec2 b) { if(length(a) == 0.0) return vec2(0.0); return c_exp(c_mul(b, c_log(a))); }
+        vec2 c_sqrt(vec2 z) { float r = length(z); return vec2(sqrt((r+z.x)/2.0), sqrt((r-z.x)/2.0) * (z.y < 0.0 ? -1.0 : 1.0)); }
+    `;
+  const vsSource = `
+        attribute float aIdx;
+        uniform float uT, uSteps, uScale;
+        uniform vec2 uRes;
+        ${glslLib}
+        void main() {
+            float x = (aIdx / uSteps) * 20.0 - 10.0;
+            float t = uT;
+            vec2 res = ${formulaGLSL}; 
+            vec2 pos = res * uScale;
+            vec2 clip = ((pos + uRes/2.0) / uRes) * 2.0 - 1.0;
+            gl_Position = vec4(clip * vec2(1, -1), 0, 1);
+            gl_PointSize = 2.0;
+        }
+    `;
+  const fsSource = `precision mediump float; uniform vec4 uCol; void main() { gl_FragColor = uCol; }`;
+  let pInfo = ctxCache.programs.get(formulaGLSL);
+  if (!pInfo) {
+    const create = (t2, s) => {
+      const sh = gl.createShader(t2);
+      gl.shaderSource(sh, s);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) console.error("Shader:", gl.getShaderInfoLog(sh));
+      return sh;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, create(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(prog, create(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(prog);
+    pInfo = {
+      prog,
+      aIdx: gl.getAttribLocation(prog, "aIdx"),
+      uT: gl.getUniformLocation(prog, "uT"),
+      uSteps: gl.getUniformLocation(prog, "uSteps"),
+      uScale: gl.getUniformLocation(prog, "uScale"),
+      uRes: gl.getUniformLocation(prog, "uRes"),
+      uCol: gl.getUniformLocation(prog, "uCol")
+    };
+    ctxCache.programs.set(formulaGLSL, pInfo);
+  }
+  let idxBuffer = ctxCache.buffers.get("static_indices");
+  if (!idxBuffer) {
+    const indices = new Float32Array(2e4);
+    for (let i = 0; i < 2e4; i++) indices[i] = i;
+    idxBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, idxBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    ctxCache.buffers.set("static_indices", idxBuffer);
+  }
+  gl.useProgram(pInfo.prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, idxBuffer);
+  gl.enableVertexAttribArray(pInfo.aIdx);
+  gl.vertexAttribPointer(pInfo.aIdx, 1, gl.FLOAT, false, 0, 0);
+  gl.uniform1f(pInfo.uT, t);
+  gl.uniform1f(pInfo.uSteps, steps);
+  gl.uniform1f(pInfo.uScale, scale);
+  gl.uniform2f(pInfo.uRes, canvas.width, canvas.height);
+  let hex = lineColor.replace("#", "");
+  let rgb = [parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255];
+  gl.uniform4f(pInfo.uCol, rgb[0], rgb[1], rgb[2], 1);
+  gl.drawArrays(gl.LINE_STRIP, 0, Math.min(steps, 2e4));
 };
 
 // src/core/enhancer.js
@@ -413,6 +511,104 @@ var findRoots = (formula, range = [-10, 10], steps = 1e3, t = 0, precision = 1e-
   res.iotaRoots = clean(res.iotaRoots);
   return res;
 };
+var drawRoots = (ctx, roots, config) => {
+  const {
+    type = "cartesian",
+    formula,
+    // Main formula (Cartesian/Complex string or function)
+    formulaX,
+    // For parametric
+    formulaY,
+    // For parametric
+    width,
+    height,
+    scale = 50,
+    xColor = "#ff4747",
+    yColor = "#4775ff",
+    iotaColor = "#ffff00",
+    radius = 5
+  } = config;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const compile = (f2, isComplex) => typeof f2 === "string" ? _createFormula(f2, ["x", "t"], { complex: isComplex }) : f2;
+  const f = compile(formula, formula && /\b(i)\b/.test(formula));
+  const fX = compile(formulaX, false);
+  const fY = compile(formulaY, false);
+  const plot = (xVal, yVal, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(centerX + xVal * scale, centerY - yVal * scale, radius, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  if (type === "parametric") {
+    if (fX) roots.xRoots.forEach((t) => {
+      const v = fX(t, 0);
+      if (v !== null) plot(v, 0, xColor);
+    });
+    if (fY) roots.iotaRoots.forEach((t) => {
+      const v = fY(t, 0);
+      if (v !== null) plot(0, v, yColor);
+    });
+  } else if (type === "complex") {
+    roots.xRoots.forEach((t) => {
+      const val = f(t, 0);
+      if (val && typeof val.re !== "undefined") plot(val.re, val.im, xColor);
+    });
+    roots.iotaRoots.forEach((t) => {
+      const val = f(t, 0);
+      if (val && typeof val.re !== "undefined") plot(val.re, val.im, iotaColor);
+    });
+  } else {
+    roots.xRoots.forEach((x) => plot(x, 0, xColor));
+    roots.yRoots.forEach((y) => plot(0, y, yColor));
+  }
+};
+var findExtrema = (formula, range = [-10, 10], steps = 1e3, t = 0) => {
+  const [min, max] = range;
+  const dx = (max - min) / steps;
+  const res = { maxima: [], minima: [] };
+  const isComplex = typeof formula === "string" && /\b(i)\b/.test(formula);
+  const f = typeof formula === "string" ? _createFormula(formula, ["x", "t"], { complex: isComplex }) : formula;
+  if (!f) return res;
+  const getVal = (x) => {
+    const v = f(x, t);
+    return v && typeof v.re !== "undefined" ? v.re : v;
+  };
+  let prevY = getVal(min);
+  let currY = getVal(min + dx);
+  for (let i = 2; i <= steps; i++) {
+    let x = min + i * dx;
+    let nextY = getVal(x);
+    if (currY > prevY && currY > nextY) {
+      res.maxima.push({ x: x - dx, y: currY });
+    } else if (currY < prevY && currY < nextY) {
+      res.minima.push({ x: x - dx, y: currY });
+    }
+    prevY = currY;
+    currY = nextY;
+  }
+  return res;
+};
+var drawExtrema = (ctx, extrema, config) => {
+  const {
+    width,
+    height,
+    scale = 50,
+    maxColor = "#ffcf47",
+    minColor = "#47ffcf",
+    radius = 5
+  } = config;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const plot = (p, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(centerX + p.x * scale, centerY - p.y * scale, radius, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  extrema.maxima.forEach((p) => plot(p, maxColor));
+  extrema.minima.forEach((p) => plot(p, minColor));
+};
 
 // src/core/index.js
 function createPlotjs(adapter) {
@@ -423,209 +619,101 @@ function createPlotjs(adapter) {
     _generateCartesianPoints,
     _generatePolarPoints,
     _generateParametricPoints,
+    _generateComplexPoints,
     _drawGraph,
+    _drawGraphWebGL,
+    _drawGraphGPUEvaluated,
     drawAxis,
     drawGrid,
     addText,
     findRoots,
+    drawRoots,
+    findExtrema,
+    drawExtrema,
     drawCartesian: (config) => {
-      const {
-        formulaStr,
-        canvas: existingCanvas,
-        width = 500,
-        height = 250,
-        lineColor = "white",
-        lineWidth = 2,
-        bgColor = "black",
-        xRange,
-        yRange,
-        scale = 50,
-        t = 0
-      } = config;
-      if (!formulaStr) {
-        console.error("Plotjs Error: parameter formulaStr must be passed to draw the graph");
-        return null;
-      }
+      const { formulaStr, canvas: existingCanvas, width = 500, height = 250, lineColor = "white", lineWidth = 2, bgColor = "black", xRange, yRange, scale = 50, t = 0 } = config;
+      if (!formulaStr) return null;
       const formula = _createFormula(formulaStr, ["x", "t"]);
       if (!formula) return null;
       const canvas = existingCanvas || createCanvas(width, height);
-      if (!existingCanvas && canvas.style) {
-        canvas.style.backgroundColor = bgColor;
-      }
+      if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
       const ctx = canvas.getContext("2d");
-      const points = _generateCartesianPoints({
-        formula,
-        width: canvas.width || width,
-        height: canvas.height || height,
-        scale,
-        xRange,
-        yRange,
-        t
-      });
+      const points = _generateCartesianPoints({ formula, width: canvas.width || width, height: canvas.height || height, scale, xRange, yRange, t });
       _drawGraph(points, ctx, { lineColor, lineWidth });
       return canvas;
     },
     drawPolar: (config) => {
-      const {
-        formulaStr,
-        canvas: existingCanvas,
-        width = 500,
-        height = 500,
-        lineColor = "white",
-        lineWidth = 2,
-        bgColor = "black",
-        scale = 50,
-        tRange = [0, 2 * Math.PI],
-        steps = 1e3,
-        t = 0
-      } = config;
-      if (!formulaStr) {
-        console.error("Plotjs Error: parameter formulaStr must be passed");
-        return null;
-      }
+      const { formulaStr, canvas: existingCanvas, width = 500, height = 500, lineColor = "white", lineWidth = 2, bgColor = "black", scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0 } = config;
+      if (!formulaStr) return null;
       const formula = _createFormula(formulaStr, ["x", "t"]);
       if (!formula) return null;
       const canvas = existingCanvas || createCanvas(width, height);
-      if (!existingCanvas && canvas.style) {
-        canvas.style.backgroundColor = bgColor;
-      }
+      if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
       const ctx = canvas.getContext("2d");
-      const points = _generatePolarPoints({
-        formula,
-        width: canvas.width || width,
-        height: canvas.height || height,
-        scale,
-        tRange,
-        steps,
-        t
-      });
+      const points = _generatePolarPoints({ formula, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t });
       _drawGraph(points, ctx, { lineColor, lineWidth });
       return canvas;
     },
     drawParametric: (config) => {
-      const {
-        formulaXStr,
-        formulaYStr,
-        canvas: existingCanvas,
-        width = 500,
-        height = 500,
-        lineColor = "white",
-        lineWidth = 2,
-        bgColor = "black",
-        scale = 50,
-        tRange = [0, 2 * Math.PI],
-        steps = 1e3,
-        t = 0
-      } = config;
-      if (!formulaXStr || !formulaYStr) {
-        console.error("Plotjs Error: parameter formulaXStr and formulaYStr must be passed");
-        return null;
-      }
-      const fX = _createFormula(formulaXStr, ["x", "t"]);
-      const fY = _createFormula(formulaYStr, ["x", "t"]);
+      const { formulaXStr, formulaYStr, canvas: existingCanvas, width = 500, height = 500, lineColor = "white", lineWidth = 2, bgColor = "black", scale = 50, tRange = [0, 2 * Math.PI], steps = 1e3, t = 0 } = config;
+      if (!formulaXStr || !formulaYStr) return null;
+      const fX = _createFormula(formulaXStr, ["x", "t"]), fY = _createFormula(formulaYStr, ["x", "t"]);
       if (!fX || !fY) return null;
       const canvas = existingCanvas || createCanvas(width, height);
-      if (!existingCanvas && canvas.style) {
-        canvas.style.backgroundColor = bgColor;
-      }
+      if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
       const ctx = canvas.getContext("2d");
-      const points = _generateParametricPoints({
-        fX,
-        fY,
-        width: canvas.width || width,
-        height: canvas.height || height,
-        scale,
-        tRange,
-        steps,
-        t
-      });
+      const points = _generateParametricPoints({ fX, fY, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t });
       _drawGraph(points, ctx, { lineColor, lineWidth });
       return canvas;
     },
     drawComplex: (config) => {
-      const {
-        formulaStr,
-        canvas: existingCanvas,
-        width = 500,
-        height = 500,
-        lineColor = "white",
-        lineWidth = 2,
-        bgColor = "black",
-        scale = 50,
-        xRange = [-10, 10],
-        steps = 1e3,
-        t = 0
-      } = config;
-      if (!formulaStr) {
-        console.error("PlotJs Error: parameter formulaStr must be passed");
-        return null;
-      }
-      const formula = _createFormula(formulaStr, ["x", "t"], {
-        complex: true
-      });
+      const { formulaStr, canvas: existingCanvas, width = 500, height = 500, lineColor = "white", lineWidth = 2, bgColor = "black", scale = 50, xRange = [-10, 10], steps = 1e3, t = 0 } = config;
+      if (!formulaStr) return null;
+      const formula = _createFormula(formulaStr, ["x", "t"], { complex: true });
       if (!formula) return null;
       const canvas = existingCanvas || createCanvas(width, height);
-      if (!existingCanvas && canvas.style) {
-        canvas.style.backgroundColor = bgColor;
-      }
+      if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
       const ctx = canvas.getContext("2d");
-      const points = _generateComplexPoints({
-        formula,
-        width: canvas.width || width,
-        height: canvas.height || height,
-        scale,
-        xRange,
-        steps,
-        t
-      });
+      const points = _generateComplexPoints({ formula, width: canvas.width || width, height: canvas.height || height, scale, xRange, steps, t });
       _drawGraph(points, ctx, { lineColor, lineWidth });
       return canvas;
     },
     loopAnimate: (config) => {
-      const {
-        type = "cartesian",
-        // 'cartesian', 'polar', 'parametric'
-        formulaStr,
-        formulaXStr,
-        formulaYStr,
-        canvas: existingCanvas,
-        width = 500,
-        height = 250,
-        lineColor = "white",
-        lineWidth = 2,
-        bgColor = "black",
-        scale = 50,
-        xRange,
-        yRange,
-        tRange,
-        steps,
-        duration = Infinity,
-        speed = 1,
-        showAxis = true,
-        showGrid = true
-      } = config;
-      let formula, fX, fY;
-      if (type === "parametric") {
-        fX = _createFormula(formulaXStr, ["x", "t"]);
-        fY = _createFormula(formulaYStr, ["x", "t"]);
-        if (!fX || !fY) return null;
-      } else {
-        if (!formulaStr) {
-          console.error("Plotjs Error: formulaStr required for " + type);
-          return null;
-        }
-        formula = _createFormula(formulaStr, ["x", "t"]);
-        if (!formula) return null;
-      }
+      const { layers = [], canvas: existingCanvas, width = 500, height = 500, bgColor = "black", scale = 50, duration = Infinity, showAxis = true, showGrid = true, gpu = false } = config;
+      const animationLayers = layers.length > 0 ? layers : [config];
       const canvas = existingCanvas || createCanvas(width, height);
-      if (!existingCanvas && canvas.style) {
-        canvas.style.backgroundColor = bgColor;
+      const cw = canvas.width || width, ch = canvas.height || height;
+      let uiCanvas = null, uiCtx = null;
+      if (gpu) {
+        uiCanvas = createCanvas(cw, ch);
+        uiCanvas.style.position = "absolute";
+        uiCanvas.style.left = "0";
+        uiCanvas.style.top = "0";
+        uiCanvas.style.pointerEvents = "none";
+        canvas.style.position = "relative";
+        if (canvas.parentElement) {
+          canvas.parentElement.style.position = "relative";
+          canvas.parentElement.appendChild(uiCanvas);
+        }
+        uiCtx = uiCanvas.getContext("2d");
       }
-      const ctx = canvas.getContext("2d");
-      const cw = canvas.width || width;
-      const ch = canvas.height || height;
-      let startTime = null;
-      let animationId = null;
+      const ctx = gpu ? uiCtx : canvas.getContext("2d");
+      if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
+      const compiledLayers = animationLayers.map((layer) => {
+        const lType = layer.type || "cartesian";
+        const lSteps = layer.steps || config.steps || 1e3;
+        const formulaGLSL = _createFormula(layer.formulaStr, ["x", "t"], { glsl: true, complex: true });
+        let formula, fX, fY;
+        if (lType === "parametric") {
+          fX = _createFormula(layer.formulaXStr, ["x", "t"]);
+          fY = _createFormula(layer.formulaYStr, ["x", "t"]);
+        } else {
+          const isComplex = lType === "complex" || layer.formulaStr && /\b(i)\b/.test(layer.formulaStr);
+          formula = _createFormula(layer.formulaStr, ["x", "t"], { complex: isComplex });
+        }
+        return { ...layer, type: lType, formula, fX, fY, formulaGLSL, buffer: gpu ? new Float32Array((lSteps + 1) * 2) : null };
+      });
+      let startTime = null, animationId = null;
       const renderFrame = (timeStamp) => {
         if (!startTime) startTime = timeStamp;
         const elapsed = timeStamp - startTime;
@@ -633,32 +721,44 @@ function createPlotjs(adapter) {
           cancelAnimationFrame(animationId);
           return;
         }
-        const t = elapsed / 1e3 * speed;
-        ctx.clearRect(0, 0, cw, ch);
-        if (showGrid) drawGrid(ctx, cw, ch, 50);
-        if (showAxis) drawAxis(ctx, cw, ch);
-        let points;
-        const genConfig = { ...config, width: cw, height: ch, t };
-        if (type === "polar") {
-          points = _generatePolarPoints({ formula, ...genConfig });
-        } else if (type === "parametric") {
-          points = _generateParametricPoints({ fX, fY, ...genConfig });
+        if (gpu) {
+          const gl = canvas.getContext("webgl");
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          uiCtx.clearRect(0, 0, cw, ch);
+          if (showGrid) drawGrid(uiCtx, cw, ch, 50);
+          if (showAxis) drawAxis(uiCtx, cw, ch);
         } else {
-          points = _generateCartesianPoints({ formula, ...genConfig });
+          ctx.clearRect(0, 0, cw, ch);
+          if (showGrid) drawGrid(ctx, cw, ch, 50);
+          if (showAxis) drawAxis(ctx, cw, ch);
         }
-        _drawGraph(points, ctx, { lineColor, lineWidth });
+        compiledLayers.forEach((layer) => {
+          const t = elapsed / 1e3 * (layer.speed || 1);
+          const genConfig = { ...config, ...layer, width: cw, height: ch, t, flat: gpu, buffer: layer.buffer };
+          if (gpu && layer.formulaGLSL && layer.type === "complex") {
+            _drawGraphGPUEvaluated({
+              formulaGLSL: layer.formulaGLSL,
+              t,
+              steps: layer.steps || 1e3,
+              scale: layer.scale || config.scale || 50,
+              lineColor: layer.lineColor || "white"
+            }, canvas);
+            return;
+          }
+          let points;
+          if (layer.type === "polar") points = _generatePolarPoints(genConfig);
+          else if (layer.type === "parametric") points = _generateParametricPoints(genConfig);
+          else if (layer.type === "complex") points = _generateComplexPoints(genConfig);
+          else points = _generateCartesianPoints(genConfig);
+          if (gpu) _drawGraphWebGL(points, canvas, { lineColor: layer.lineColor || "white", lineWidth: layer.lineWidth || 2 });
+          else _drawGraph(points, ctx, { lineColor: layer.lineColor || "white", lineWidth: layer.lineWidth || 2 });
+        });
+        if (config.onFrame) config.onFrame(gpu ? uiCtx : ctx, elapsed / 1e3 * (config.speed || 1));
         animationId = requestAnimationFrame(renderFrame);
       };
       animationId = requestAnimationFrame(renderFrame);
-      return {
-        canvas,
-        stop: () => cancelAnimationFrame(animationId),
-        play: () => {
-          cancelAnimationFrame(animationId);
-          startTime = null;
-          animationId = requestAnimationFrame(renderFrame);
-        }
-      };
+      return { canvas, stop: () => cancelAnimationFrame(animationId) };
     }
   };
 }

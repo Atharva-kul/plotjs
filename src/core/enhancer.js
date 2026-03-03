@@ -116,3 +116,138 @@ export const findRoots = (formula, range = [-10, 10], steps = 1000, t = 0, preci
 
     return res;
 };
+
+/**
+ * Automatically plots roots/intersections on the canvas.
+ * @param {CanvasRenderingContext2D} ctx 
+ * @param {Object} roots - The roots object from findRoots.
+ * @param {Object} config - { type, formula, formulaX, formulaY, width, height, scale, colors }
+ */
+export const drawRoots = (ctx, roots, config) => {
+    const { 
+        type = 'cartesian',
+        formula,      // Main formula (Cartesian/Complex string or function)
+        formulaX,     // For parametric
+        formulaY,     // For parametric
+        width, 
+        height, 
+        scale = 50,
+        xColor = '#ff4747',
+        yColor = '#4775ff',
+        iotaColor = '#ffff00',
+        radius = 5
+    } = config;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const compile = (f, isComplex) => typeof f === 'string' ? _createFormula(f, ['x', 't'], { complex: isComplex }) : f;
+    
+    const f = compile(formula, formula && /\b(i)\b/.test(formula));
+    const fX = compile(formulaX, false);
+    const fY = compile(formulaY, false);
+
+    const plot = (xVal, yVal, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX + xVal * scale, centerY - yVal * scale, radius, 0, Math.PI * 2);
+        ctx.fill();
+    };
+
+    if (type === 'parametric') {
+        // xRoots of formulaY are intersections with X-axis
+        if (fX) roots.xRoots.forEach(t => {
+            const v = fX(t, 0);
+            if (v !== null) plot(v, 0, xColor);
+        });
+        // xRoots of formulaX are intersections with Y-axis
+        if (fY) roots.iotaRoots.forEach(t => {
+            const v = fY(t, 0);
+            if (v !== null) plot(0, v, yColor);
+        });
+    } else if (type === 'complex') {
+        roots.xRoots.forEach(t => {
+            const val = f(t, 0);
+            if (val && typeof val.re !== 'undefined') plot(val.re, val.im, xColor);
+        });
+        roots.iotaRoots.forEach(t => {
+            const val = f(t, 0);
+            if (val && typeof val.re !== 'undefined') plot(val.re, val.im, iotaColor);
+        });
+    } else {
+        // Cartesian
+        roots.xRoots.forEach(x => plot(x, 0, xColor));
+        roots.yRoots.forEach(y => plot(0, y, yColor));
+    }
+};
+
+/**
+ * Finds local minima and maxima of a function within a given range.
+ * @param {string|Function} formula - The formula string or compiled function.
+ * @param {Array} range - [min, max] search interval.
+ * @param {number} steps - Density of search.
+ * @param {number} t - Time parameter for animations.
+ * @returns {Object} { maxima: [{x, y}], minima: [{x, y}] }
+ */
+export const findExtrema = (formula, range = [-10, 10], steps = 1000, t = 0) => {
+    const [min, max] = range;
+    const dx = (max - min) / steps;
+    const res = { maxima: [], minima: [] };
+
+    // Auto-detect complex mode
+    const isComplex = typeof formula === 'string' && /\b(i)\b/.test(formula);
+    const f = typeof formula === 'string' ? _createFormula(formula, ['x', 't'], { complex: isComplex }) : formula;
+    if (!f) return res;
+
+    const getVal = (x) => {
+        const v = f(x, t);
+        return (v && typeof v.re !== 'undefined') ? v.re : v;
+    };
+
+    let prevY = getVal(min);
+    let currY = getVal(min + dx);
+
+    for (let i = 2; i <= steps; i++) {
+        let x = min + i * dx;
+        let nextY = getVal(x);
+
+        if (currY > prevY && currY > nextY) {
+            res.maxima.push({ x: x - dx, y: currY });
+        } else if (currY < prevY && currY < nextY) {
+            res.minima.push({ x: x - dx, y: currY });
+        }
+
+        prevY = currY;
+        currY = nextY;
+    }
+    return res;
+};
+
+/**
+ * Draws extrema points on the canvas.
+ * @param {CanvasRenderingContext2D} ctx 
+ * @param {Object} extrema - The object from findExtrema.
+ * @param {Object} config - { width, height, scale, maxColor, minColor, radius }
+ */
+export const drawExtrema = (ctx, extrema, config) => {
+    const { 
+        width, height, 
+        scale = 50, 
+        maxColor = '#ffcf47', 
+        minColor = '#47ffcf', 
+        radius = 5 
+    } = config;
+    
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const plot = (p, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX + p.x * scale, centerY - p.y * scale, radius, 0, Math.PI * 2);
+        ctx.fill();
+    };
+
+    extrema.maxima.forEach(p => plot(p, maxColor));
+    extrema.minima.forEach(p => plot(p, minColor));
+};
