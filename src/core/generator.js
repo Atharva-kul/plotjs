@@ -1,6 +1,17 @@
 export const _generateCartesianPoints = (config) => {
-    const { formula, width, height, scale = 50, xRange, t = 0, steps, flat = false, buffer = null } = config;
-    const numSteps = steps || width;
+    const { formula, 
+        width, 
+        height, 
+        scale = 50, 
+        xRange, 
+        t = 0, 
+        steps, 
+        flat = false, 
+        buffer = null 
+    } = config;
+
+
+    const numSteps = steps || width; 
     const midX = width / 2;
     const midY = height / 2;
 

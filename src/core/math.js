@@ -1,3 +1,5 @@
+// checks the math terms forn solving them
+
 export const _createFormula = (formulaStr, args, options = {}) => {
     const isComplex = options.complex === true;
 
@@ -16,31 +18,37 @@ export const _createFormula = (formulaStr, args, options = {}) => {
         const peek = () => tokens[pos];
         const consume = () => tokens[pos++];
 
+
+        // follows logical order of BODMAS
+
+        //very last addition and subtraction
         const parseExpression = () => {
-            let node = parseTerm();
+            let node = parseTerm(); // all other methods are executed first like bracket open, power solving, multiplication, division. 
             while (peek() === '+' || peek() === '-') {
                 const op = consume();
                 const right = parseTerm();
                 if (mode === 'glsl-complex') node = op === '+' ? `c_add(${node}, ${right})` : `c_sub(${node}, ${right})`;
-                else if (mode === 'complex') node = op === '+' ? `_add(${node}, ${right})` : `_sub(${node}, ${right})`;
+                else if (mode === 'complex') node = op === '+' ? `_add(${node}, ${right})` : `_sub(${node}, ${right})`; // addition subtraction check
                 else node = `(${node}${op}${right})`;
             }
             return node;
         };
 
         const parseTerm = () => {
+            // after bracket open and power solving
             let node = parseFactor();
             while (peek() === '*' || peek() === '/') {
                 const op = consume();
                 const right = parseFactor();
                 if (mode === 'glsl-complex') node = op === '*' ? `c_mul(${node}, ${right})` : `c_div(${node}, ${right})`;
-                else if (mode === 'complex') node = op === '*' ? `_mul(${node}, ${right})` : `_div(${node}, ${right})`;
+                else if (mode === 'complex') node = op === '*' ? `_mul(${node}, ${right})` : `_div(${node}, ${right})`; //multiplication aand division
                 else node = `(${node}${op}${right})`;
             }
             return node;
         };
 
         const parseFactor = () => {
+            // after checking power and brackets check all the tokens to multiply, divide, add, sub.
             let node = parsePower();
             while (pos < tokens.length && ['(','x','t','i','PI','E','sin','cos','tan','pow','sqrt','log'].includes(peek())) {
                 const right = parsePower();
@@ -52,6 +60,8 @@ export const _createFormula = (formulaStr, args, options = {}) => {
         };
 
         const parsePower = () => {
+
+            // after bracket open
             let node = parseUnary();
             while (peek() === '^') {
                 consume();
@@ -63,6 +73,7 @@ export const _createFormula = (formulaStr, args, options = {}) => {
             return node;
         };
 
+        // check the signs of equation to determine the variables are positive or negative
         const parseUnary = () => {
             if (peek() === '-') { 
                 consume(); 
@@ -74,8 +85,10 @@ export const _createFormula = (formulaStr, args, options = {}) => {
             return parsePrimary();
         };
 
+        // very first bracked open
         const parsePrimary = () => {
             const t = consume();
+            // if there are any calculation needed before opening the bracket
             if (t === '(') { const e = parseExpression(); consume(); return `(${e})`; }
             if (funcNames.includes(t)) {
                 consume();

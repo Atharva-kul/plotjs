@@ -43,13 +43,33 @@ export const drawGrid = (
 export const addText = (
     ctx, 
     text, 
-    x, y, 
-    font = '16px Arial', 
-    color = 'white'
+    config={}
 ) => {
+        const {
+            point=null,
+            color='white',
+            font='16px Arial',
+            scale=50
+        } = config
+
+        const {width, height} = ctx.canvas
+        let canvasX, canvasY
+
+        if(!point || point.length<2) {
+            canvasX = 5
+            canvasY = 5
+        } else {
+            canvasX = (width/2) + (point[0] * scale)
+            canvasY = (height/2) -  (point[1] * scale)
+        }
+
+        ctx.fillStyle = color
+
         ctx.font = font;
-        ctx.fillStyle = color;
-        ctx.fillText(text, x, y);
+        ctx.textBaseLine = 'top'
+        ctx.textAlign = 'left'
+        
+        ctx.fillText(text, canvasX, canvasY);
 };
 
 

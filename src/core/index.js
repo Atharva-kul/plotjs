@@ -24,54 +24,217 @@ export function createPlotjs(adapter) {
         findExtrema,
         drawExtrema,
 
+        //Method 1: draaw Cartesian graph
+
         drawCartesian: (config) => {
-            const { formulaStr, canvas: existingCanvas, width = 500, height = 250, lineColor = 'white', lineWidth = 2, bgColor = 'black', xRange, yRange, scale = 50, t = 0 } = config;
-            if(!formulaStr) return null;
+            const { formulaStr, 
+                canvas: existingCanvas, 
+                width = 500, height = 250, 
+                lineColor = 'white', 
+                lineWidth = 2, 
+                bgColor = 'black', 
+                xRange, yRange, 
+                scale = 50, 
+                t = 0 
+            } = config;
+
+            // error log 1: if formula string is missing
+            if(!formulaStr) {
+                console.error("1. PlotJs error: formula string required")
+                return null
+            };
+
+
+            //convert string fromula in actuaal formula
             const formula = _createFormula(formulaStr, ['x', 't']);
-            if(!formula) return null;
+
+            // error log 2: if there is problem in converting string into formula
+            if(!formula) {
+                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                return null
+            };
+
+            // create canvas or use existing one
             const canvas = existingCanvas || createCanvas(width, height);
-            if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
+
+            if (!existingCanvas && canvas.style) {
+                canvas.style.backgroundColor = bgColor
+            };
+
             const ctx = canvas.getContext('2d');
-            const points = _generateCartesianPoints({ formula, width: canvas.width || width, height: canvas.height || height, scale, xRange, yRange, t });
-            _drawGraph(points, ctx, { lineColor, lineWidth });
+
+            const points = _generateCartesianPoints({ 
+                formula, 
+                width: canvas.width || width,
+                height: canvas.height || height, 
+                scale, 
+                xRange, yRange, 
+                t 
+            });
+
+            _drawGraph(
+                points, 
+                ctx, 
+                { lineColor, lineWidth });
+
             return canvas;
         },
 
         drawPolar: (config) => {
-            const { formulaStr, canvas: existingCanvas, width = 500, height = 500, lineColor = 'white', lineWidth = 2, bgColor = 'black', scale = 50, tRange = [0, 2 * Math.PI], steps = 1000, t = 0 } = config;
-            if(!formulaStr) return null;
+            const { 
+                formulaStr, 
+                canvas: existingCanvas, 
+                width = 500, height = 500, 
+                lineColor = 'white', lineWidth = 2, 
+                bgColor = 'black', 
+                scale = 50, 
+                tRange = [0, 2 * Math.PI], 
+                steps = 1000, 
+                t = 0 
+            
+            } = config;
+
+            // error log 1: if formula string is missing
+            if(!formulaStr) {
+                console.error("1. PlotJs error: formula string required")
+                return null
+            };
+
             const formula = _createFormula(formulaStr, ['x', 't']);
-            if(!formula) return null;
+
+
+            // error log 2: if there is problem in converting string into formula
+            if(!formula) {
+                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                return null
+            };
+
             const canvas = existingCanvas || createCanvas(width, height);
-            if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
+
+            if (!existingCanvas && canvas.style) {
+                canvas.style.backgroundColor = bgColor
+            };
+
             const ctx = canvas.getContext('2d');
-            const points = _generatePolarPoints({ formula, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t });
-            _drawGraph(points, ctx, { lineColor, lineWidth });
+
+            const points = _generatePolarPoints({ 
+                formula, 
+                width: canvas.width || width, 
+                height: canvas.height || height, 
+                scale, 
+                tRange, 
+                steps, 
+                t 
+            });
+
+            _drawGraph(points, 
+                ctx, 
+                { lineColor, lineWidth });
+
             return canvas;
         },
     
         drawParametric: (config) => {
-            const { formulaXStr, formulaYStr, canvas: existingCanvas, width = 500, height = 500, lineColor = 'white', lineWidth = 2, bgColor = 'black', scale = 50, tRange = [0, 2 * Math.PI], steps = 1000, t = 0 } = config;
-            if(!formulaXStr || !formulaYStr) return null;
-            const fX = _createFormula(formulaXStr, ['x', 't']), fY = _createFormula(formulaYStr, ['x', 't']);
-            if(!fX || !fY) return null;
+            const { 
+                formulaXStr, formulaYStr, 
+                canvas: existingCanvas, 
+                width = 500, 
+                height = 500, 
+                lineColor = 'white', 
+                lineWidth = 2, 
+                bgColor = 'black', 
+                scale = 50, 
+                tRange = [0, 2 * Math.PI], 
+                steps = 1000, 
+                t = 0 
+            } = config;
+
+            // error log 1: if formula string is missing
+            if(!formulaXStr || !formulaYStr) {
+                console.error("1. PlotJs error: formula string required")
+                return null
+            };
+
+            const fX = _createFormula(formulaXStr, ['x', 't'])
+            const fY = _createFormula(formulaYStr, ['x', 't']);
+
+            // error log 2: if there is problem in converting string into formula
+            if(!fX || !fY) {
+                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                return null
+            };
+                
             const canvas = existingCanvas || createCanvas(width, height);
-            if (!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
+
+            if (!existingCanvas && canvas.style) {
+                canvas.style.backgroundColor = bgColor
+            };
+
             const ctx = canvas.getContext('2d');
-            const points = _generateParametricPoints({ fX, fY, width: canvas.width || width, height: canvas.height || height, scale, tRange, steps, t });
+
+            const points = _generateParametricPoints({ 
+                fX, fY, 
+                width: canvas.width || width, 
+                height: canvas.height || height, 
+                scale, 
+                tRange, 
+                steps, 
+                t 
+            });
+
             _drawGraph(points, ctx, { lineColor, lineWidth });
             return canvas;
         },
 
         drawComplex: (config) => {
-            const { formulaStr, canvas: existingCanvas, width = 500, height = 500, lineColor = 'white', lineWidth = 2, bgColor = 'black', scale = 50, xRange = [-10, 10], steps = 1000, t = 0 } = config;
-            if(!formulaStr) return null;
-            const formula = _createFormula(formulaStr, ['x', 't'], { complex: true });
-            if(!formula) return null;
+            const { formulaStr, 
+                canvas: existingCanvas, 
+                width = 500, height = 500, 
+                lineColor = 'white', 
+                lineWidth = 2, 
+                bgColor = 'black', 
+                scale = 50, 
+                xRange = [-10, 10], 
+                steps = 1000, 
+                t = 0 
+            } = config;
+
+            // error log 1: if formula string is missing
+            if(!formulaStr) {
+                console.error("1. PlotJs error: formula string required")
+                return null
+            };
+
+            const formula = _createFormula(
+                formulaStr, 
+                ['x', 't'], 
+                { complex: true }
+            );
+
+            // error log 2: if there is problem in converting string into formula
+            if(!formula) {
+                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                return null
+            };
+
             const canvas = existingCanvas || createCanvas(width, height);
-            if(!existingCanvas && canvas.style) canvas.style.backgroundColor = bgColor;
+
+            if(!existingCanvas && canvas.style) {
+                canvas.style.backgroundColor = bgColor
+            };
+
             const ctx = canvas.getContext('2d');
-            const points = _generateComplexPoints({ formula, width: canvas.width || width, height:  canvas.height || height, scale, xRange, steps, t });
+
+            const points = _generateComplexPoints({ 
+                formula, 
+                width: canvas.width || width, 
+                height:  canvas.height || height, 
+                scale, 
+                xRange, 
+                steps, 
+                t 
+            });
+            
             _drawGraph(points, ctx, {lineColor, lineWidth});
             return canvas;
         },

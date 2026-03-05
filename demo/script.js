@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(h2)
         graphContainer.appendChild(polar)
 
-        Plotjs.addText(polar.getContext('2d'), 'polar curve', 10, 20, '16px Arial', '#ff6347');
+        Plotjs.addText(polar.getContext('2d'), 'polar curve', { point: [4, 4], font: '16px Arial', color: '#ff6347' });
         Plotjs.drawAxis(polar.getContext('2d'), 600, 600);
         Plotjs.drawGrid(polar. getContext('2d'), 600, 600, 50);
     
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(parametric)
 
         const ctx = parametric.getContext('2d');
-        Plotjs.addText(ctx, 'parametric curve', 10, 20, '16px Arial', '#47ff56');
+        Plotjs.addText(ctx, 'parametric curve', { point: [-4, 4], font: '16px Arial', color: '#47ff56' });
         Plotjs.drawAxis(ctx, 600, 600);
         Plotjs.drawGrid(ctx, 600, 600, 50);
 
