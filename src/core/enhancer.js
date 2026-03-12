@@ -1,19 +1,21 @@
 import { _createFormula } from './math.js';
 
 export const drawAxis = (ctx, width, height) => {
+    const w = width || ctx.canvas.width;
+    const h = height || ctx.canvas.height;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, height/2);
-    ctx.lineTo(width, height/2);
-    ctx.moveTo(width/2, 0);
-    ctx.lineTo(width/2, height);
+    ctx.moveTo(0, h/2);
+    ctx.lineTo(w, h/2);
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
     let xLabel = 'x-axis'
     let yLabel = 'y-axis'
     ctx.font = '12px Arial';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(xLabel, width - 50, height/2 - 10);
-    ctx.fillText(yLabel, width/2 + 10, 20);
+    ctx.fillText(xLabel, w - 50, h/2 - 10);
+    ctx.fillText(yLabel, w/2 + 10, 20);
     
     ctx.stroke();
 };
@@ -26,16 +28,18 @@ export const drawGrid = (
     lineColor = '#555555', 
     lineWidth = 0.5
 )  => {
+    const w = width || ctx.canvas.width;
+    const h = height || ctx.canvas.height;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    for (let x = gridSpacing; x < width; x += gridSpacing) {
+    for (let x = gridSpacing; x < w; x += gridSpacing) {
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.lineTo(x, h);
     }
-    for (let y = gridSpacing; y < height; y += gridSpacing) {
+    for (let y = gridSpacing; y < h; y += gridSpacing) {
         ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.lineTo(w, y);
     }
     ctx.stroke();
 };
@@ -52,15 +56,16 @@ export const addText = (
             scale=50
         } = config
 
-        const {width, height} = ctx.canvas
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
         let canvasX, canvasY
 
         if(!point || point.length<2) {
             canvasX = 5
             canvasY = 5
         } else {
-            canvasX = (width/2) + (point[0] * scale)
-            canvasY = (height/2) -  (point[1] * scale)
+            canvasX = (w/2) + (point[0] * scale)
+            canvasY = (h/2) -  (point[1] * scale)
         }
 
         ctx.fillStyle = color
@@ -158,8 +163,10 @@ export const drawRoots = (ctx, roots, config) => {
         radius = 5
     } = config;
 
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const w = width || ctx.canvas.width;
+    const h = height || ctx.canvas.height;
+    const centerX = w / 2;
+    const centerY = h / 2;
 
     const compile = (f, isComplex) => typeof f === 'string' ? _createFormula(f, ['x', 't'], { complex: isComplex }) : f;
     
@@ -258,8 +265,10 @@ export const drawExtrema = (ctx, extrema, config) => {
         radius = 5 
     } = config;
     
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const w = width || ctx.canvas.width;
+    const h = height || ctx.canvas.height;
+    const centerX = w / 2;
+    const centerY = h / 2;
 
     const plot = (p, color) => {
         ctx.fillStyle = color;
@@ -270,4 +279,117 @@ export const drawExtrema = (ctx, extrema, config) => {
 
     extrema.maxima.forEach(p => plot(p, maxColor));
     extrema.minima.forEach(p => plot(p, minColor));
+};
+
+/**
+ * Adds interactive coordinate tracking to a canvas.
+ * @param {HTMLCanvasElement} canvas 
+ * @param {Object} config - { scale, color, font }
+ */
+export const showCoordinates = (canvas, config = {}) => {
+    const { 
+        scale = 50, 
+        color = '#ffffff', 
+        font = '12px monospace' 
+    } = config;
+
+    // Prevent duplicate initializations
+    if (canvas.dataset.hasCoordinates) return () => {};
+    canvas.dataset.hasCoordinates = 'true';
+
+    // 1. Setup Wrapper & Overlay
+    let wrapper = canvas.parentElement;
+    if (!wrapper || !wrapper.classList.contains('graphlyjs-wrapper')) {
+        wrapper = document.createElement('div');
+        wrapper.classList.add('graphlyjs-wrapper');
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'inline-block';
+        canvas.parentNode.insertBefore(wrapper, canvas);
+        wrapper.appendChild(canvas);
+    }
+
+    const overlay = document.createElement('canvas');
+    const oCtx = overlay.getContext('2d');
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.zIndex = '10';
+    wrapper.appendChild(overlay);
+
+    const syncOverlay = () => {
+        const rect = canvas.getBoundingClientRect();
+        overlay.width = canvas.width;
+        overlay.height = canvas.height;
+        overlay.style.width = rect.width + 'px';
+        overlay.style.height = rect.height + 'px';
+    };
+
+    syncOverlay();
+    const ro = new ResizeObserver(() => syncOverlay());
+    ro.observe(canvas);
+
+    const originalCursor = canvas.style.cursor;
+    canvas.style.cursor = 'crosshair';
+
+    // 2. Event Listener logic (extracted to named functions)
+    const handleMouseMove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+
+        const mathX = ((mouseX - canvas.width / 2) / scale).toFixed(2);
+        const mathY = ((canvas.height / 2 - mouseY) / scale).toFixed(2);
+
+        // Best practice: Clear, then save/restore context state
+        oCtx.clearRect(0, 0, overlay.width, overlay.height);
+        oCtx.save();
+
+        // Draw Crosshairs
+        oCtx.strokeStyle = color;
+        oCtx.setLineDash([2, 2]);
+        oCtx.globalAlpha = 0.4;
+        oCtx.beginPath();
+        oCtx.moveTo(mouseX, 0); oCtx.lineTo(mouseX, canvas.height);
+        oCtx.moveTo(0, mouseY); oCtx.lineTo(canvas.width, mouseY);
+        oCtx.stroke();
+
+        // Draw Coordinate Text
+        oCtx.globalAlpha = 1.0;
+        oCtx.fillStyle = color;
+        oCtx.font = font;
+        
+        const textOffset = 4;
+        let textX = mouseX + textOffset;
+        let textY = mouseY - textOffset;
+        
+        if (textX > canvas.width - 80) textX = mouseX - 85;
+        if (textY < 20) textY = mouseY + 20;
+
+        oCtx.fillText(`(${mathX}, ${mathY})`, textX, textY);
+        oCtx.restore();
+    };
+
+    const handleMouseLeave = () => {
+        oCtx.clearRect(0, 0, overlay.width, overlay.height);
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+
+    // 3. Return a Cleanup Function
+    return () => {
+        ro.disconnect();
+        canvas.removeEventListener('mousemove', handleMouseMove);
+        canvas.removeEventListener('mouseleave', handleMouseLeave);
+        canvas.style.cursor = originalCursor;
+        if (wrapper.contains(overlay)) {
+            wrapper.removeChild(overlay);
+        }
+        delete canvas.dataset.hasCoordinates;
+    };
 };

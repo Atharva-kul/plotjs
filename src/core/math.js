@@ -5,7 +5,7 @@ export const _createFormula = (formulaStr, args, options = {}) => {
 
     const allowedPattern = /^(?:[xti0-9.+\-/*^(),\s]|sin|cos|tan|sec|cot|cosec|pow|sqrt|abs|log|PI|E)+$/;
     if (!allowedPattern.test(formulaStr)) {
-        console.error(`Plotjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
+        console.error(`Graphlyjs Security Error: The formula "${formulaStr}" contains unauthorized characters.`);
         return null;
     }
 

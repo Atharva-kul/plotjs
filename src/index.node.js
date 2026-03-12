@@ -1,6 +1,6 @@
-import { createPlotjs } from './core/index.js';
+import { createGraphlyjs } from './core/index.js';
 import { nodeAdapter } from './node/adapter.js';
 
-const Plotjs = createPlotjs(nodeAdapter);
+const Graphlyjs = createGraphlyjs(nodeAdapter);
 
-export default Plotjs;
+export default Graphlyjs;

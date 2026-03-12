@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mainCanvas.height = 400;
     mainContainer.appendChild(mainCanvas);
 
-    Plotjs.loopAnimate({
+    Graphlyjs.loopAnimate({
         formulaStr: mainFormula,
         canvas: mainCanvas,
         width: 900,
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Side Graph 1: Polar (Intricate Rose Curve) ---
     // Formula for an intricate rose curve
-    const polarCanvas = Plotjs.drawPolar({
+    const polarCanvas = Graphlyjs.drawPolar({
         formulaStr: '2 * sin(6 * x) + cos(12 * x)',
         width: 600,
         height: 600,
@@ -51,12 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (polarCanvas) {
         polarContainer.appendChild(polarCanvas);
         const ctx = polarCanvas.getContext('2d');
-        Plotjs.drawGrid(ctx, 600, 600, 50, 'rgba(0, 243, 255, 0.1)', 0.5);
+        Graphlyjs.drawGrid(ctx, 600, 600, 50, 'rgba(0, 243, 255, 0.1)', 0.5);
     }
 
     // --- Side Graph 2: Parametric (Hypotrochoid) ---
     // A complex parametric curve (spirograph-like)
-    const parametricAnimation = Plotjs.loopAnimate({
+    const parametricAnimation = Graphlyjs.loopAnimate({
         type: 'parametric',
         formulaXStr: '4 * cos(x - t) + 2 * cos(7 * x - t * 0.5)',
         formulaYStr: '4 * sin(x - t) - 2 * sin(7 * x - t * 0.5)',

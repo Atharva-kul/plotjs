@@ -17,16 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '2.4 * (cos(x) + i * sin(x)) + 0.5 * (cos(31*x - t) + i * sin(31*x - t))'
             : '2.4 * (cos(x) + i * sin(x)) + 0.5 * (cos(31*x + t) + i * sin(31*x + t))';
 
-        const compiledDetail = Plotjs._createFormula(detailStr, ['x', 't'], { complex: true });
+        const compiledDetail = Graphlyjs._createFormula(detailStr, ['x', 't'], { complex: true });
 
-        const canvas = Plotjs.createCanvas(420, 420);
+        const canvas = Graphlyjs.createCanvas(420, 420);
         container.appendChild(canvas);
 
         let frameCount = 0;
         let lastFpsUpdate = 0;
         let fps = 0;
 
-        Plotjs.loopAnimate({
+        Graphlyjs.loopAnimate({
             ...config,
             canvas: canvas,
             showAxis: false, 
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastFpsUpdate = now;
                 }
 
-                Plotjs.addText(ctx, `FPS: ${fps}`, 10, 25, '14px Courier New', '#ff3e3e');
+                Graphlyjs.addText(ctx, `FPS: ${fps}`, 10, 25, '14px Courier New', '#ff3e3e');
 
                 ctx.strokeStyle = 'rgba(251, 0, 0, 0.27)';
                 ctx.lineWidth = 2;

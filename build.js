@@ -14,7 +14,7 @@ esbuild.build({
 esbuild.build({
   entryPoints: ['src/index.browser.js'],
   bundle: true,
-  outfile: 'dist/plotjs.min.js',
+  outfile: 'dist/graphlyjs.min.js',
   format: 'iife',
   minify: true,
   platform: 'browser',

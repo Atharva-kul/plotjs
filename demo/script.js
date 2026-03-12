@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const graphContainer = document.getElementById('graph-container');
 
     // Example 1: Sine wave
-    const sineCanvas = Plotjs.drawCartesian({
+    const sineCanvas = Graphlyjs.drawCartesian({
         formulaStr: 'sin(x^2) - log(x)',
         width: 900,
         height: 300,
@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = sin(x^2) - log(x)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(sineCanvas);
-        Plotjs.drawAxis(sineCanvas.getContext('2d'), 900, 300);
-        Plotjs.loopAnimate({
+        Graphlyjs.drawAxis(sineCanvas.getContext('2d'));
+        Graphlyjs.loopAnimate({
             formulaStr: 'sin(x^2 - t) - log(x)',
             canvas: sineCanvas,
             lineColor: '#61dafb',
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Example 2: Cosine wave
-    const cosineCanvas = Plotjs.drawCartesian({
+    const cosineCanvas = Graphlyjs.drawCartesian({
         formulaStr: 'cos(x + t)',
         width: 900,
         height: 300,
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = cos(x + t)';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(cosineCanvas);
-        Plotjs.loopAnimate({
+        Graphlyjs.loopAnimate({
             formulaStr: 'cos(x + t)',
             canvas: cosineCanvas,
             lineColor: '#ff69b4',
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Example 3: A more complex function (e.g., x^2)
-    const complexCanvas = Plotjs.drawCartesian({
+    const complexCanvas = Graphlyjs.drawCartesian({
         formulaStr: 'x^2',
         width: 600,
         height: 300,
@@ -68,11 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         h2.textContent = 'y = x^2';
         graphContainer.appendChild(h2);
         graphContainer.appendChild(complexCanvas);
-        Plotjs.drawAxis(complexCanvas.getContext('2d'), 600, 300);
-        Plotjs.drawGrid(complexCanvas.getContext('2d'), 600, 300, 50);
+        Graphlyjs.drawAxis(complexCanvas.getContext('2d'));
+        Graphlyjs.drawGrid(complexCanvas.getContext('2d'));
     }
 
-    const polar = Plotjs.drawPolar({
+    const polar = Graphlyjs.drawPolar({
         formulaStr: '2 + sin(5 * x)',
         width: 600,
         height: 600,
@@ -88,13 +88,13 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(h2)
         graphContainer.appendChild(polar)
 
-        Plotjs.addText(polar.getContext('2d'), 'polar curve', { point: [4, 4], font: '16px Arial', color: '#ff6347' });
-        Plotjs.drawAxis(polar.getContext('2d'), 600, 600);
-        Plotjs.drawGrid(polar. getContext('2d'), 600, 600, 50);
+        Graphlyjs.addText(polar.getContext('2d'), 'polar curve', { point: [4, 4], font: '16px Arial', color: '#ff6347' });
+        Graphlyjs.drawAxis(polar.getContext('2d'));
+        Graphlyjs.drawGrid(polar.getContext('2d'));
     
     }
 
-    const parametric = Plotjs.drawParametric({
+    const parametric = Graphlyjs.drawParametric({
         formulaXStr: '3 * cos(x) + 2 * cos(3 * x)',
         formulaYStr: '3 * sin(x) - 2 * sin(3 * x)',
         width: 600,
@@ -111,30 +111,30 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(parametric)
 
         const ctx = parametric.getContext('2d');
-        Plotjs.addText(ctx, 'parametric curve', { point: [-4, 4], font: '16px Arial', color: '#47ff56' });
-        Plotjs.drawAxis(ctx, 600, 600);
-        Plotjs.drawGrid(ctx, 600, 600, 50);
+        Graphlyjs.addText(ctx, 'parametric curve', { point: [-4, 4], font: '16px Arial', color: '#47ff56' });
+        Graphlyjs.drawAxis(ctx);
+        Graphlyjs.drawGrid(ctx);
 
         // --- Use findRoots & drawRoots without manual compilation ---
-        const rootsX = Plotjs.findRoots('3 * sin(x) - 2 * sin(3 * x)', [0, 2 * Math.PI]); // Roots of Y
-        const rootsY = Plotjs.findRoots('3 * cos(x) + 2 * cos(3 * x)', [0, 2 * Math.PI]); // Roots of X
+        const rootsX = Graphlyjs.findRoots('3 * sin(x) - 2 * sin(3 * x)', [0, 2 * Math.PI]); // Roots of Y
+        const rootsY = Graphlyjs.findRoots('3 * cos(x) + 2 * cos(3 * x)', [0, 2 * Math.PI]); // Roots of X
 
-        Plotjs.drawRoots(ctx, rootsX, { 
+        Graphlyjs.drawRoots(ctx, rootsX, { 
             type: 'parametric', 
             formulaX: '3 * cos(x) + 2 * cos(3 * x)', 
-            width: 600, height: 600, scale: 50, xColor: '#ff4747' 
+            scale: 50, xColor: '#ff4747' 
         });
 
-        Plotjs.drawRoots(ctx, rootsY, { 
+        Graphlyjs.drawRoots(ctx, rootsY, { 
             type: 'parametric', 
             formulaY: '3 * sin(x) - 2 * sin(3 * x)', 
-            width: 600, height: 600, scale: 50, yColor: '#4775ff' 
+            scale: 50, yColor: '#4775ff' 
         });
     }
 
-    const ArgandPlane = Plotjs.drawComplex({
+    const ArgandPlane = Graphlyjs.drawComplex({
         formulaStr: '3 * (cos(x) + i * sin(x)) + 1.5 * (cos(4 * x) - i * sin(4 * x))',
-        width: 600,
+        width: 900,
         height: 600,
         lineColor: '#00ffff',
         bgColor: '#01050f',
@@ -150,23 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(ArgandPlane)
 
         const ctx = ArgandPlane.getContext('2d');
-        Plotjs.drawAxis(ctx, 600, 600)
-        Plotjs.drawGrid(ctx, 600, 600, 50)
+        Graphlyjs.drawAxis(ctx)
+        Graphlyjs.drawGrid(ctx)
 
         // --- Simplified Complex Roots ---
         const formulaStr = '3 * (cos(x) + i * sin(x)) + 1.5 * (cos(4 * x) - i * sin(4 * x))';
-        const roots = Plotjs.findRoots(formulaStr, [0, 2 * Math.PI]);
-        
-        Plotjs.drawRoots(ctx, roots, {
+        const roots = Graphlyjs.findRoots(formulaStr, [0, 2 * Math.PI]);
+
+        Graphlyjs.drawRoots(ctx, roots, {
             type: 'complex',
             formula: formulaStr,
-            width: 600, height: 600, scale: 60,
+            scale: 60,
             xColor: '#ff00ff', iotaColor: '#ffff00'
         });
+
+        Graphlyjs.showCoordinates(ArgandPlane, { scale: 60, color: '#00ffff' });
     }
 
     // --- NEW: High-Complexity Multi-Harmonic Graph ---
-    const ComplexLace = Plotjs.drawComplex({
+    const ComplexLace = Graphlyjs.drawComplex({
         // 4 layers of rotating vectors with increasing frequencies
         formulaStr: '2.5 * (cos(x) + i * sin(x)) + 1.2 * (cos(5*x) + i * sin(5*x)) + 0.6 * (cos(13*x) - i * sin(13*x)) + 0.3 * (cos(23*x) + i * sin(23*x))',
         width: 700,
@@ -185,17 +187,17 @@ document.addEventListener('DOMContentLoaded', () => {
         graphContainer.appendChild(ComplexLace)
 
         const ctx = ComplexLace.getContext('2d');
-        Plotjs.drawAxis(ctx, 700, 700)
-        Plotjs.drawGrid(ctx, 700, 700, 50)
+        Graphlyjs.drawAxis(ctx)
+        Graphlyjs.drawGrid(ctx)
 
         // --- Simplified Lace Roots ---
         const formulaStr = '2.5 * (cos(x) + i * sin(x)) + 1.2 * (cos(5*x) + i * sin(5*x)) + 0.6 * (cos(13*x) - i * sin(13*x)) + 0.3 * (cos(23*x) + i * sin(23*x))';
-        const roots = Plotjs.findRoots(formulaStr, [0, 2 * Math.PI], 5000);
+        const roots = Graphlyjs.findRoots(formulaStr, [0, 2 * Math.PI], 5000);
         
-        Plotjs.drawRoots(ctx, roots, {
+        Graphlyjs.drawRoots(ctx, roots, {
             type: 'complex',
             formula: formulaStr,
-            width: 700, height: 700, scale: 70,
+            scale: 70,
             xColor: '#ff00ff', iotaColor: '#ffff00',
             radius: 3
         });

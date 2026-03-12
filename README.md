@@ -1,6 +1,6 @@
-# Plotjs - Isomorphic Mathematical Graphing Library
+# Graphlyjs - Isomorphic Mathematical Graphing Library
 
-Plotjs is a lightweight, high-performance JavaScript library for drawing mathematical functions directly on an HTML canvas or in Node.js. It features a custom math transpiler that supports real and complex analysis, shorthand notation, and automatic root-finding, with optional **WebGL GPU acceleration**.
+Graphlyjs is a lightweight, high-performance JavaScript library for drawing mathematical functions directly on an HTML canvas or in Node.js. It features a custom math transpiler that supports real and complex analysis, shorthand notation, and automatic root-finding, with optional **WebGL GPU acceleration**.
 
 ## Features
 
@@ -14,10 +14,10 @@ Plotjs is a lightweight, high-performance JavaScript library for drawing mathema
 *   **UI Enhancements**: Built-in support for grids, axes, labels, and point markers.
 *   **Multi-layer Animations**: Animate multiple independent functions simultaneously.
 
-## Installation (Planned for future)
+## Installation 
 
 ```bash
-npm install plotjs
+npm install graphlyjs
 ```
 *(Note: Ensure you have `canvas` installed if using in Node.js)*
 
@@ -88,7 +88,7 @@ Locates local turning points (peaks and valleys).
 
 ## Math Syntax
 
-Plotjs uses a custom transpiler that makes writing math natural:
+Graphlyjs uses a custom transpiler that makes writing math natural:
 - **Shorthand**: `2x`, `(x+1)(x-1)`, `x sin(x)` are all valid.
 - **Powers**: Use `^` for exponents (e.g., `x^2`).
 - **Complex**: Simply include `i` in your formula (e.g., `exp(i * x)`).

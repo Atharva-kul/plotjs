@@ -1,9 +1,9 @@
 import { _createFormula } from './math.js';
 import { _generateCartesianPoints, _generatePolarPoints, _generateParametricPoints, _generateComplexPoints } from './generator.js';
 import { _drawGraph, _drawGraphWebGL, _drawGraphGPUEvaluated } from './drawer.js';
-import { drawAxis, drawGrid, addText, findRoots, drawRoots, findExtrema, drawExtrema } from './enhancer.js';
+import { drawAxis, drawGrid, addText, findRoots, drawRoots, findExtrema, drawExtrema, showCoordinates } from './enhancer.js';
 
-export function createPlotjs(adapter) {
+export function createGraphlyjs(adapter) {
     const { createCanvas, requestAnimationFrame, cancelAnimationFrame } = adapter;
 
     return {
@@ -23,6 +23,7 @@ export function createPlotjs(adapter) {
         drawRoots,
         findExtrema,
         drawExtrema,
+        showCoordinates,
 
         //Method 1: draaw Cartesian graph
 
@@ -40,7 +41,7 @@ export function createPlotjs(adapter) {
 
             // error log 1: if formula string is missing
             if(!formulaStr) {
-                console.error("1. PlotJs error: formula string required")
+                console.error("1. GraphlyJs error: formula string required")
                 return null
             };
 
@@ -50,7 +51,7 @@ export function createPlotjs(adapter) {
 
             // error log 2: if there is problem in converting string into formula
             if(!formula) {
-                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                console.error("2. GraphlyJs error: there was problem in converting formula string into actual formula")    
                 return null
             };
 
@@ -96,7 +97,7 @@ export function createPlotjs(adapter) {
 
             // error log 1: if formula string is missing
             if(!formulaStr) {
-                console.error("1. PlotJs error: formula string required")
+                console.error("1. GraphlyJs error: formula string required")
                 return null
             };
 
@@ -105,7 +106,7 @@ export function createPlotjs(adapter) {
 
             // error log 2: if there is problem in converting string into formula
             if(!formula) {
-                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                console.error("2. GraphlyJs error: there was problem in converting formula string into actual formula")    
                 return null
             };
 
@@ -151,7 +152,7 @@ export function createPlotjs(adapter) {
 
             // error log 1: if formula string is missing
             if(!formulaXStr || !formulaYStr) {
-                console.error("1. PlotJs error: formula string required")
+                console.error("1. GraphlyJs error: formula string required")
                 return null
             };
 
@@ -160,7 +161,7 @@ export function createPlotjs(adapter) {
 
             // error log 2: if there is problem in converting string into formula
             if(!fX || !fY) {
-                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                console.error("2. GraphlyJs error: there was problem in converting formula string into actual formula")    
                 return null
             };
                 
@@ -201,7 +202,7 @@ export function createPlotjs(adapter) {
 
             // error log 1: if formula string is missing
             if(!formulaStr) {
-                console.error("1. PlotJs error: formula string required")
+                console.error("1. GraphlyJs error: formula string required")
                 return null
             };
 
@@ -213,7 +214,7 @@ export function createPlotjs(adapter) {
 
             // error log 2: if there is problem in converting string into formula
             if(!formula) {
-                console.error("2. PlotJs error: there was problem in converting formula string into actual formula")    
+                console.error("2. GraphlyJs error: there was problem in converting formula string into actual formula")    
                 return null
             };
 
