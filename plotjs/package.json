@@ -1,0 +1,54 @@
+{
+  "name": "graphlyjs",
+  "version": "1.0.0",
+  "description": "A lightweight, high-performance isomorphic JavaScript library for drawing mathematical functions on HTML canvas or Node.js with WebGL GPU acceleration.",
+  "type": "module",
+  "main": "dist/index.node.cjs",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "browser": "./dist/index.browser.js",
+      "import": "./dist/index.node.js",
+      "require": "./dist/index.node.cjs"
+    }
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Atharva-kul/graphlyjs.git"
+  },
+  "keywords": [
+    "canvas",
+    "math",
+    "graph",
+    "plot",
+    "isomorphic",
+    "webgl",
+    "gpu-acceleration",
+    "complex-analysis",
+    "argand-plane",
+    "mathematical-functions",
+    "graphlyjs"
+  ],
+  "author": "Atharva Kul",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Atharva-kul/graphlyjs/issues"
+  },
+  "homepage": "https://github.com/Atharva-kul/graphlyjs#readme",
+  "dependencies": {
+    "canvas": "^3.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}
